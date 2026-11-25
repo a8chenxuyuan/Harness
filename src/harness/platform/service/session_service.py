@@ -83,4 +83,6 @@ class SessionService:
             title=r.title,
             status=r.status,
             message_count=r.message_count,
+            created_at=r.created_at,
+            updated_at=r.updated_at,
         )

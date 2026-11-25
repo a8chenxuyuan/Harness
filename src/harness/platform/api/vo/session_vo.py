@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -15,6 +17,8 @@ class SessionResponse(BaseModel):
     title: str = ""
     status: str = "active"
     message_count: int = 0
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class SessionListResponse(BaseModel):
