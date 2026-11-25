@@ -77,3 +77,21 @@ async def auth_headers(register_user):
     """注册并返回 Bearer 认证头。"""
     _, _, data = await register_user()
     return {"Authorization": f"Bearer {data['access_token']}"}
+
+
+@pytest.fixture
+async def db_session():
+    """直接操作数据库的 AsyncSession（服务/仓储层单测用）。"""
+    from harness.platform.infra.engine import get_session_factory
+
+    factory = get_session_factory()
+    async with factory() as session:
+        yield session
+
+
+@pytest.fixture
+def user_info():
+    """测试用登录用户（固定租户 + 独立 user_id）。"""
+    from harness.platform.api.vo.auth_vo import UserInfo
+
+    return UserInfo(user_id="u-test", tenant_id="dev-tenant", role="owner")

@@ -43,12 +43,10 @@ async def run_agent(
     from harness.platform.service.agent_service import AgentService
 
     try:
-        result = await AgentService().run(
+        result = await AgentService(user, db).run(
             goal=req.goal,
             mode=req.mode,
             conversation_id=req.conversation_id,
-            user_id=user.user_id,
-            tenant_id=user.tenant_id,
         )
     except BizError:
         raise
@@ -72,8 +70,8 @@ async def run_agent(
         action="agent.run",
         target=req.mode,
         result=result.get("status", "success"),
-        session_id=result.get("run_id"),
-        detail={"goal": req.goal[:200]},
+        session_id=req.conversation_id,
+        detail={"run_id": result.get("run_id"), "goal": req.goal[:200]},
     )
     return {"code": 0, "message": "ok", "data": result}
 
