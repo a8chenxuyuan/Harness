@@ -11,13 +11,14 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from harness.platform.api.deps import get_current_user, get_db
-from harness.platform.api.dto.agent import AgentRunRequest, AgentRunResponse
-from harness.platform.api.dto.auth import UserInfo
-from harness.platform.api.dto.common import ApiResponse
-from harness.platform.api.dto.plan import (
+from harness.platform.api.dto.agent_dto import AgentRunRequest
+from harness.platform.api.vo.agent_vo import AgentRunResponse
+from harness.platform.api.vo.auth_vo import UserInfo
+from harness.platform.api.vo.envelope_vo import ApiResponse
+from harness.platform.api.dto.plan_dto import AgentPlanRequest
+from harness.platform.api.vo.plan_vo import (
     AgentCancelResponse,
     AgentExecuteResponse,
-    AgentPlanRequest,
     AgentPlanResponse,
     AgentStatusResponse,
     PlanSummary,
@@ -85,7 +86,7 @@ async def create_plan(
 ) -> dict:
     """用显式 steps 创建 Plan 并落库（approved=False，等待审批）。"""
     from harness.platform.auth.audit import record_audit
-    from harness.platform.repository.plan_repo import PlanRepository
+    from harness.platform.repository.plan_repository import PlanRepository
     from harness.platform.service.plan_service import PlanService
 
     service = PlanService(db, user)
@@ -215,9 +216,9 @@ def _spawn_execution(plan_id: str, tenant_id: str, user_id: str) -> None:
     from harness.platform.service.run_registry import get_run_registry
 
     async def _job() -> str:
-        from harness.platform.api.dto.auth import UserInfo
-        from harness.platform.db.engine import get_session_factory
-        from harness.platform.repository.plan_repo import PlanRepository
+        from harness.platform.api.vo.auth_vo import UserInfo
+        from harness.platform.infra.engine import get_session_factory
+        from harness.platform.repository.plan_repository import PlanRepository
         from harness.platform.service.plan_service import PlanService
 
         factory = get_session_factory()

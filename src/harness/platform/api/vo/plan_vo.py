@@ -1,29 +1,13 @@
-"""Plan 相关 DTO（POST /agents/plan、GET /plans）。"""
+"""Plan 域出参（VO）。
+
+请求模型在 ``api.dto.plan``。
+"""
 
 from __future__ import annotations
 
 from typing import Any
 
 from pydantic import BaseModel, Field
-
-
-class PlanStepInput(BaseModel):
-    """创建 Plan 时的单个步骤入参。"""
-
-    task_id: str = Field(default="", max_length=64)
-    goal: str = Field(..., min_length=1, max_length=2000)
-    input: str = Field(default="", max_length=8000)
-    worker: str | None = Field(default=None, max_length=64)
-    depends_on: list[str] = Field(default_factory=list)
-    tools_allowed: list[str] = Field(default_factory=list)
-    max_steps: int = Field(default=20, ge=1, le=100)
-
-
-class AgentPlanRequest(BaseModel):
-    """POST /api/v1/agents/plan 请求体。"""
-
-    goal: str = Field(..., min_length=1, max_length=4000)
-    steps: list[PlanStepInput] = Field(..., min_length=1, description="显式步骤（不调 LLM）")
 
 
 class PlanSummary(BaseModel):
@@ -46,7 +30,7 @@ class AgentPlanResponse(BaseModel):
 
 
 class PlanListResponse(BaseModel):
-    """GET /plans 响应体。"""
+    """GET /plans 列表响应（分页）。"""
 
     items: list[PlanSummary] = Field(default_factory=list)
     total: int = 0
@@ -79,8 +63,6 @@ class AgentCancelResponse(BaseModel):
 
 
 __all__ = [
-    "PlanStepInput",
-    "AgentPlanRequest",
     "PlanSummary",
     "AgentPlanResponse",
     "PlanListResponse",

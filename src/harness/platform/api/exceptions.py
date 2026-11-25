@@ -12,7 +12,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from harness.platform.api.dto.common import ApiErrorResponse
+from harness.platform.api.vo.envelope_vo import ApiErrorResponse
 
 log = logging.getLogger(__name__)
 

@@ -26,7 +26,7 @@ async def seed_dev_data(session) -> dict[str, int]:
     """写入开发种子数据（幂等）。
 
     Args:
-        session: ``harness.platform.db.engine.get_session_factory()`` 产出的 AsyncSession。
+        session: ``harness.platform.infra.engine.get_session_factory()`` 产出的 AsyncSession。
 
     Returns:
         ``{"tenants": 0|1, "users": n}`` —— 本次实际新建的行数。
@@ -34,8 +34,8 @@ async def seed_dev_data(session) -> dict[str, int]:
     from sqlmodel import select
 
     from harness.platform.auth.password import hash_password
-    from harness.platform.models.tenant import Tenant
-    from harness.platform.models.user import User
+    from harness.platform.entity.tenant import Tenant
+    from harness.platform.entity.user import User
 
     created = {"tenants": 0, "users": 0}
 
@@ -74,7 +74,7 @@ async def seed_dev_data(session) -> dict[str, int]:
 
 async def seed_default(database_url: str | None = None) -> dict[str, int]:
     """便捷入口：自建 session 并写入种子数据。"""
-    from harness.platform.db.engine import get_session_factory, init_db
+    from harness.platform.infra.engine import get_session_factory, init_db
 
     await init_db(database_url)
     factory = get_session_factory(database_url)

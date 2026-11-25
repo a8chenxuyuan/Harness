@@ -14,9 +14,9 @@ import json
 import logging
 from typing import Any
 
-from harness.platform.api.dto.auth import UserInfo
-from harness.platform.models.plan import PlanRecord
-from harness.platform.repository.plan_repo import PlanRepository
+from harness.platform.api.vo.auth_vo import UserInfo
+from harness.platform.entity.plan import PlanRecord
+from harness.platform.repository.plan_repository import PlanRepository
 
 log = logging.getLogger(__name__)
 

@@ -1,4 +1,4 @@
-"""Harness 数据库基础设施（引擎 + Alembic 迁移）。
+"""Harness 数据库基础设施（连接引擎 + 建表 + 种子数据）。
 
 ⚠️ SQLModel / SQLAlchemy 是可选依赖 —— 某些机器上 Windows 应用程序控制策略
 会阻止 Cython 扩展 DLL 加载。这种情况下 import 本包不会炸，直接用 Phase 0-21
@@ -12,11 +12,11 @@ from typing import Any
 
 def __getattr__(name: str) -> Any:
     """延迟加载 db.engine 成员。"""
-    # 这样顶层 ``from harness.platform.db import init_db`` 不会在模块 import 时
+    # 这样顶层 ``from harness.platform.infra import init_db`` 不会在模块 import 时
     # 立即触发 sqlalchemy / sqlmodel 的 C 扩展加载
     from . import engine as _engine
     if not hasattr(_engine, name):
-        raise AttributeError(f"module 'harness.platform.db' has no attribute {name!r}")
+        raise AttributeError(f"module 'harness.platform.infra' has no attribute {name!r}")
     return getattr(_engine, name)
 
 

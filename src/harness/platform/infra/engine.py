@@ -76,7 +76,7 @@ def get_session_factory(database_url: str | None = None):
 async def init_db(database_url: str | None = None) -> None:
     """首次启动时根据 SQLModel.metadata 建表。"""
     from sqlmodel import SQLModel
-    import harness.platform.models  # noqa: F401 — 触发 metadata 注册
+    import harness.platform.entity  # noqa: F401 — 触发 metadata 注册
 
     engine = get_engine(database_url)
     async with engine.begin() as conn:

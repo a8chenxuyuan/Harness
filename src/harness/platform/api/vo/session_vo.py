@@ -1,17 +1,11 @@
-"""Session 相关 DTO。"""
+"""Session 域出参（VO）。
+
+请求模型在 ``api.dto.session``。
+"""
 
 from __future__ import annotations
 
-from typing import Any
-
 from pydantic import BaseModel, Field
-
-
-class SessionCreateRequest(BaseModel):
-    """POST /api/v1/sessions 请求体。"""
-
-    title: str = Field(default="", max_length=256)
-    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class SessionResponse(BaseModel):
@@ -32,4 +26,4 @@ class SessionListResponse(BaseModel):
     size: int = 20
 
 
-__all__ = ["SessionCreateRequest", "SessionResponse", "SessionListResponse"]
+__all__ = ["SessionResponse", "SessionListResponse"]

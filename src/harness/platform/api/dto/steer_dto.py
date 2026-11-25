@@ -1,7 +1,6 @@
-"""Steering 相关 DTO。
+"""Steering 域入参（DTO）。
 
-从 gateway/steering_api.py 迁过来，保持 pydantic v2 风格，同时
-在 gateway 层做 re-export 保持向后兼容。
+只放请求模型；响应模型在 ``api.vo.steer``。
 """
 
 from __future__ import annotations
@@ -21,12 +20,4 @@ class SteerRequest(BaseModel):
     model_config = {"extra": "forbid"}
 
 
-class SteerResponse(BaseModel):
-    """steer 成功响应。"""
-
-    ok: bool = True
-    session_id: str
-    action: Literal["interrupt", "continue", "inject"]
-
-
-__all__ = ["SteerRequest", "SteerResponse"]
+__all__ = ["SteerRequest"]

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .base import BaseRepository
+from .repository_base import BaseRepository
 
 
 class UserRepository(BaseRepository):
@@ -12,7 +12,7 @@ class UserRepository(BaseRepository):
     model = None  # type: ignore
 
     def __init__(self, session) -> None:
-        from harness.platform.models.user import User
+        from harness.platform.entity.user import User
         self.model = User
         super().__init__(session)
 

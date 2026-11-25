@@ -80,7 +80,7 @@ class VectorMemory(Memory):
             if vector:
                 enriched["_embedding"] = vector[0]
 
-        from harness.platform.repository.memory_repo import MemoryRepository
+        from harness.platform.repository.memory_repository import MemoryRepository
 
         async with self._factory() as session:
             return await MemoryRepository(session).save(
@@ -96,7 +96,7 @@ class VectorMemory(Memory):
         if not query:
             return []
 
-        from harness.platform.repository.memory_repo import MemoryRepository
+        from harness.platform.repository.memory_repository import MemoryRepository
 
         async with self._factory() as session:
             rows = await MemoryRepository(session).search(
@@ -125,7 +125,7 @@ class VectorMemory(Memory):
 
     async def delete(self, item_id: str) -> bool:
         """删除一条记忆（租户隔离）。"""
-        from harness.platform.repository.memory_repo import MemoryRepository
+        from harness.platform.repository.memory_repository import MemoryRepository
 
         async with self._factory() as session:
             return await MemoryRepository(session).delete(self._tenant_id, item_id)

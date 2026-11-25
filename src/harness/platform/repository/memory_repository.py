@@ -10,7 +10,7 @@ import json
 import uuid
 from typing import Any
 
-from harness.platform.models.memory import MemoryEntry
+from harness.platform.entity.memory import MemoryEntry
 
 
 def _like_pattern(query: str) -> str:

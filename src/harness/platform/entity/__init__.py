@@ -1,6 +1,6 @@
 """Harness 数据库实体层（SQLModel table=True）。
 
-显式导入 5 个子模块，确保 ``import harness.platform.models`` 时
+显式导入 5 个子模块，确保 ``import harness.platform.entity`` 时
 所有 table=True 实体都完成 ``SQLModel.metadata`` 注册——
 这是 ``db.engine.init_db()`` 里 ``metadata.create_all`` 能建表的前提。
 
@@ -10,12 +10,12 @@
 
 from __future__ import annotations
 
-from harness.platform.models.audit_log import AuditLog
-from harness.platform.models.memory import MemoryEntry
-from harness.platform.models.plan import PlanRecord
-from harness.platform.models.session import SessionRecord
-from harness.platform.models.tenant import Tenant
-from harness.platform.models.user import User
+from harness.platform.entity.audit_log import AuditLog
+from harness.platform.entity.memory import MemoryEntry
+from harness.platform.entity.plan import PlanRecord
+from harness.platform.entity.session import SessionRecord
+from harness.platform.entity.tenant import Tenant
+from harness.platform.entity.user import User
 
 __all__ = [
     "Tenant",

@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import uuid
 
-from harness.platform.api.dto.auth import UserInfo
-from harness.platform.api.dto.session import (
+from harness.platform.api.vo.auth_vo import UserInfo
+from harness.platform.api.vo.session_vo import (
     SessionListResponse,
     SessionResponse,
 )
 from harness.platform.api.exceptions import BizError
-from harness.platform.models.session import SessionRecord
-from harness.platform.repository.session_repo import SessionRepository
+from harness.platform.entity.session import SessionRecord
+from harness.platform.repository.session_repository import SessionRepository
 
 
 class SessionService:

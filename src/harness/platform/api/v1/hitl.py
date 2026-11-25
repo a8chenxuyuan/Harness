@@ -5,8 +5,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 
 from harness.platform.api.deps import get_current_user
-from harness.platform.api.dto.auth import UserInfo
-from harness.platform.api.dto.common import ApiResponse
+from harness.platform.api.vo.auth_vo import UserInfo
+from harness.platform.api.vo.envelope_vo import ApiResponse
 
 router = APIRouter(prefix="/hitl", tags=["hitl"])
 

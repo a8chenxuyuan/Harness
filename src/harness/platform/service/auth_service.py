@@ -12,7 +12,8 @@ from __future__ import annotations
 
 import uuid
 
-from harness.platform.api.dto.auth import LoginResponse, RegisterRequest
+from harness.platform.api.dto.auth_dto import RegisterRequest
+from harness.platform.api.vo.auth_vo import LoginResponse
 from harness.platform.api.exceptions import BizError
 from harness.platform.auth.jwt import (
     ACCESS_TOKEN_EXPIRE,
@@ -21,8 +22,8 @@ from harness.platform.auth.jwt import (
     sign_refresh_token,
 )
 from harness.platform.auth.password import hash_password, verify_password
-from harness.platform.models.user import User
-from harness.platform.repository.user_repo import UserRepository
+from harness.platform.entity.user import User
+from harness.platform.repository.user_repository import UserRepository
 
 # 开发期默认租户（多租户管理接口在 Phase 25+ 开放后动态创建）
 DEFAULT_TENANT_ID = "dev-tenant"

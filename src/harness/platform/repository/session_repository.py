@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .base import BaseRepository
+from .repository_base import BaseRepository
 
 
 class SessionRepository(BaseRepository):
@@ -11,7 +11,7 @@ class SessionRepository(BaseRepository):
     model = None  # type: ignore
 
     def __init__(self, session) -> None:
-        from harness.platform.models.session import SessionRecord
+        from harness.platform.entity.session import SessionRecord
         self.model = SessionRecord
         super().__init__(session)
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from harness.platform.models.plan import PlanRecord
+from harness.platform.entity.plan import PlanRecord
 
 
 class PlanRepository:

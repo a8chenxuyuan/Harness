@@ -8,13 +8,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from harness.platform.api.deps import get_current_user, get_db
-from harness.platform.api.dto.auth import UserInfo
-from harness.platform.api.dto.common import ApiResponse
-from harness.platform.api.dto.session import (
-    SessionCreateRequest,
-    SessionListResponse,
-    SessionResponse,
-)
+from harness.platform.api.vo.auth_vo import UserInfo
+from harness.platform.api.vo.envelope_vo import ApiResponse
+from harness.platform.api.dto.session_dto import SessionCreateRequest
+from harness.platform.api.vo.session_vo import SessionListResponse, SessionResponse
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 

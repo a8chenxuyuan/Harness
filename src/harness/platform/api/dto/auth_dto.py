@@ -1,4 +1,7 @@
-"""认证相关 DTO（Phase 22 填充，先给骨架）。"""
+"""认证域入参（DTO）。
+
+只放请求模型；响应模型在 ``api.vo.auth``。
+"""
 
 from __future__ import annotations
 
@@ -10,15 +13,6 @@ class LoginRequest(BaseModel):
 
     username: str = Field(..., min_length=1, max_length=128, description="用户名或邮箱")
     password: str = Field(..., min_length=1, max_length=256, description="明文密码（HTTPS 传输）")
-
-
-class LoginResponse(BaseModel):
-    """POST /api/v1/auth/login 成功响应。"""
-
-    access_token: str = Field(..., description="JWT access token，15min")
-    refresh_token: str = Field(..., description="JWT refresh token，7d")
-    token_type: str = Field("bearer")
-    expires_in: int = Field(900, description="access_token 有效期秒数")
 
 
 class RefreshRequest(BaseModel):
@@ -39,12 +33,4 @@ class RegisterRequest(BaseModel):
     tenant_name: str | None = Field(default=None, description="新建租户名（不传则加入默认租户）")
 
 
-class UserInfo(BaseModel):
-    """从 JWT 解析出来的当前用户信息（给 Service 层用的载体）。"""
-
-    user_id: str
-    tenant_id: str
-    role: str = Field(..., description="owner | admin | member")
-
-
-__all__ = ["LoginRequest", "LoginResponse", "RegisterRequest", "UserInfo"]
+__all__ = ["LoginRequest", "RefreshRequest", "RegisterRequest"]

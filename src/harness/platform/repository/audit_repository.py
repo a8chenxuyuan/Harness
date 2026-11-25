@@ -26,7 +26,7 @@ class AuditRepository:
         detail_json: str = "{}",
     ):
         """写一条审计日志。"""
-        from harness.platform.models.audit_log import AuditLog
+        from harness.platform.entity.audit_log import AuditLog
 
         entry = AuditLog(
             tenant_id=tenant_id,
@@ -52,7 +52,7 @@ class AuditRepository:
     ):
         """按租户查日志，支持 action + 时间范围过滤。"""
         from sqlmodel import select
-        from harness.platform.models.audit_log import AuditLog
+        from harness.platform.entity.audit_log import AuditLog
 
         stmt = select(AuditLog).where(AuditLog.tenant_id == tenant_id)
         if action:
