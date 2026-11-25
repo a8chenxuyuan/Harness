@@ -21,8 +21,7 @@ benchmark_report.json
 .ruff_cache/
 .mypy_cache/
 
-# 测试与示例脚本不上传
-tests/
+# 示例脚本不上传（tests/ 纳入版本管理）
 examples/
 
 .idea/
