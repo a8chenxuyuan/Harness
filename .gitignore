@@ -27,3 +27,6 @@ examples/
 
 .idea/
 .vscode/
+
+# 本地 skill / IDE 配置不上传
+.trae/
