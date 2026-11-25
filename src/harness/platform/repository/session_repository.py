@@ -58,3 +58,16 @@ class SessionRepository(BaseRepository):
             )
         )
         return result.first()
+
+    async def get_by_owner(self, tenant_id: str, user_id: str, session_id: str):
+        """按 id + 租户 + 属主查询（同租户用户之间也互不可见）。"""
+        from sqlmodel import select
+        Record = self.model
+        result = await self.session.exec(
+            select(Record).where(
+                Record.session_id == session_id,
+                Record.tenant_id == tenant_id,
+                Record.user_id == user_id,
+            )
+        )
+        return result.first()
