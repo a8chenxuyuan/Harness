@@ -5,7 +5,7 @@
   - continue：在 interrupt 之后恢复运行
   - inject：往当前会话追加一条新的用户消息
 
-本层不实现具体 session 存储——只把调用转发给 ``harness.loop.interrupt``
+本层不实现具体 session 存储——只把调用转发给 ``harness.core.loop.interrupt``
 和上层的 session manager。找不到 session 时返回 None，server 层会转成 404。
 """
 
@@ -104,13 +104,13 @@ async def steer(req: SteerRequest) -> dict[str, Any] | None:
 
     kind = req.kind
     if kind == "interrupt":
-        from harness.loop.interrupt import interrupt
+        from harness.core.loop.interrupt import interrupt
         interrupt(state, reason="user_steer_interrupt")
         log.info("steer interrupt session=%s", req.session_id)
         return {"session_id": req.session_id, "action": "interrupt"}
 
     if kind == "continue":
-        from harness.loop.interrupt import resume
+        from harness.core.loop.interrupt import resume
         resume(state)
         log.info("steer continue session=%s", req.session_id)
         return {"session_id": req.session_id, "action": "continue"}
@@ -120,7 +120,7 @@ async def steer(req: SteerRequest) -> dict[str, Any] | None:
             return {"error": "inject requires non-empty message"}
         # 往 state.messages 里追加一条 user message
         try:
-            from harness.message.helpers import user_message
+            from harness.common.message.helpers import user_message
             state.messages.append(user_message(text=req.message))
             log.info("steer inject session=%s msg=%s", req.session_id, req.message[:50])
         except Exception as exc:  # noqa: BLE001

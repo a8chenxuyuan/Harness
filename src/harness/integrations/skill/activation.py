@@ -12,14 +12,14 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from harness.message.content_block import TextBlock
-from harness.message.msg import Msg
-from harness.message.role import Role
+from harness.common.message.content_block import TextBlock
+from harness.common.message.msg import Msg
+from harness.common.message.role import Role
 
 from .model import Skill
 
 if TYPE_CHECKING:
-    from harness.loop.state import AgentState
+    from harness.core.loop.state import AgentState
 
 log = logging.getLogger(__name__)
 
