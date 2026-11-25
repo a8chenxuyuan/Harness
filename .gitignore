@@ -11,8 +11,9 @@ dist/
 .env.*
 .env.local
 !.env.example
-!web/.env.example
-config/
+!/web/.env.example
+# 仅忽略仓库根目录的本地运行配置目录，避免误伤 src 下的 config 源码包
+/config/
 
 *.db
 *.db-journal
