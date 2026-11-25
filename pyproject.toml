@@ -23,6 +23,13 @@ dependencies = [
     "opentelemetry-sdk>=1.24",
     "opentelemetry-exporter-otlp>=1.24",
     "prometheus-client>=0.20",
+    # --- Phase 22 ---
+    "SQLModel>=0.0.18",
+    "PyJWT>=2.8",
+    "passlib[bcrypt]>=1.7",
+    "aiosqlite>=0.20",
+    # --- Phase 24 ---
+    "alembic>=1.13",
 ]
 
 [project.optional-dependencies]

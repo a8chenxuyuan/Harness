@@ -6,8 +6,11 @@ __pycache__/
 build/
 dist/
 
+# 本地环境配置不上传
 .env
+.env.*
 .env.local
+config/
 
 *.db
 *.db-journal
@@ -17,6 +20,10 @@ benchmark_report.json
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+
+# 测试与示例脚本不上传
+tests/
+examples/
 
 .idea/
 .vscode/
