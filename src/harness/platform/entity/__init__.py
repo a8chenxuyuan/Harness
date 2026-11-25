@@ -10,10 +10,12 @@
 
 from __future__ import annotations
 
+from harness.platform.entity.agent_run import AgentRun
 from harness.platform.entity.audit_log import AuditLog
 from harness.platform.entity.memory import MemoryEntry
 from harness.platform.entity.plan import PlanRecord
 from harness.platform.entity.session import SessionRecord
+from harness.platform.entity.session_message import SessionMessage
 from harness.platform.entity.tenant import Tenant
 from harness.platform.entity.user import User
 
@@ -21,6 +23,8 @@ __all__ = [
     "Tenant",
     "User",
     "SessionRecord",
+    "SessionMessage",
+    "AgentRun",
     "AuditLog",
     "MemoryEntry",
     "PlanRecord",

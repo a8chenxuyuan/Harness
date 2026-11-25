@@ -25,6 +25,8 @@ class SessionRecord(SQLModel, table=True):  # noqa: F811
     title: str = Field(default="", max_length=256)
     status: str = Field(default="active", max_length=16)
     message_count: int = Field(default=0)
+    summary: str = Field(default="", sa_column=Column("summary", Text))
+    last_message_at: datetime | None = Field(default=None)
     metadata_json: str = Field(default="{}", sa_column=Column("metadata", Text))
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

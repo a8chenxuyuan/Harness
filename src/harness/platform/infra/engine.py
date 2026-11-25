@@ -85,12 +85,13 @@ async def init_db(database_url: str | None = None) -> None:
 
 
 async def close_db() -> None:
-    """关闭引擎。"""
-    global _engine
+    """关闭引擎并重置工厂单例（便于测试/重启后切换数据库）。"""
+    global _engine, _session_factory
     if _engine is not None:
         await _engine.dispose()
         _engine = None
-        log.info("db.engine: disposed")
+    _session_factory = None
+    log.info("db.engine: disposed")
 
 
 async def yield_session(database_url: str | None = None):
