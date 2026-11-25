@@ -8,7 +8,7 @@ const useMock = import.meta.env.VITE_USE_MOCK !== "false";
 /** POST /agents/run（同步执行，前端给足超时） */
 export async function startRun(goal: string): Promise<RunData> {
   if (useMock) return mockStartRun(goal);
-  return post<RunData>("/agents/run", { goal, mode: "react" });
+  return post<RunData>("/agents/run", { goal, mode: "single" });
 }
 
 /** GET /agents/{run_id}/status */

@@ -4,7 +4,7 @@
     <PageHeader title="会话" subtitle="当前账号下全部会话，按更新时间倒序">
       <template #actions>
         <button class="btn ghost" @click="reload">刷新</button>
-        <button class="btn primary" @click="tip">＋ 新建会话</button>
+        <button class="btn primary" @click="create">＋ 新建会话</button>
       </template>
     </PageHeader>
 
@@ -69,7 +69,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 
-import { listSessions } from "@/api/sessions";
+import { createSession, listSessions } from "@/api/sessions";
 import type { SessionSummary } from "@/api/types";
 import PageHeader from "@/components/PageHeader.vue";
 import { pushToast } from "@/composables/toast";
@@ -110,10 +110,16 @@ function setFilter(next: "all" | "active" | "archived"): void {
   filter.value = next;
 }
 
-function tip(): void {
-  pushToast("新建会话接口待接入（样板阶段）");
+/** 新建会话后直接进入详情页开始对话。 */
+async function create(): Promise<void> {
+  try {
+    const title = `新会话 ${new Date().toLocaleString("zh-CN", { hour12: false })}`;
+    const session = await createSession(title);
+    await router.push(`/sessions/${session.session_id}`);
+  } catch (err) {
+    pushToast(err instanceof Error ? err.message : "新建失败");
+  }
 }
-
 onMounted(reload);
 </script>
 

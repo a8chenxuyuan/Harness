@@ -1,5 +1,14 @@
 /** 前端 mock 数据：VITE_USE_MOCK=true 时全部接口走这里，不依赖后端。 */
-import type { LoginData, RunData, SessionDetail, SessionListData, SessionSummary, UserInfo } from "./types";
+import type {
+  ChatMessage,
+  ChatMessageListData,
+  LoginData,
+  RunData,
+  SessionDetail,
+  SessionListData,
+  SessionSummary,
+  UserInfo,
+} from "./types";
 
 const TITLES = [
   "排查订单超时",
@@ -111,4 +120,82 @@ export async function mockCancelRun(runId: string): Promise<RunData> {
   const state = runs.get(runId);
   if (state) state.cancelled = true;
   return delay({ run_id: runId, status: "cancelled", output: null }, 90);
+}
+
+// ---------------------------------------------------------------------------
+// 会话与消息
+// ---------------------------------------------------------------------------
+
+const messages = new Map<string, ChatMessage[]>();
+let msgSeq = 0;
+
+/** 新建会话（插入列表头部）。 */
+export async function mockCreateSession(title: string): Promise<SessionDetail> {
+  const session: SessionDetail = {
+    session_id: `s-${Date.now().toString(16)}`,
+    title: title || "未命名会话",
+    status: "active",
+    message_count: 0,
+    updated_at: "刚刚",
+    created_at: new Date().toISOString(),
+    tenant_id: "dev-tenant",
+  };
+  allSessions.unshift(session);
+  messages.set(session.session_id, []);
+  return delay(session, 200);
+}
+
+/** 读取会话消息（seq 游标）。 */
+export async function mockListMessages(
+  sessionId: string,
+  afterSeq = 0,
+  limit = 50,
+): Promise<ChatMessageListData> {
+  const list = (messages.get(sessionId) ?? []).filter((item) => item.seq > afterSeq);
+  const page = list.slice(0, limit);
+  return delay({
+    items: page,
+    next_cursor: page.length ? page[page.length - 1].seq : afterSeq,
+    has_more: list.length > limit,
+  }, 150);
+}
+
+/** 发送一条用户消息，并在 600ms 后追加一条模拟助手回复。 */
+export async function mockSendMessage(sessionId: string, text: string): Promise<RunData> {
+  const list = messages.get(sessionId) ?? [];
+  const now = new Date().toISOString();
+  list.push({
+    id: `m-${++msgSeq}`,
+    session_id: sessionId,
+    role: "user",
+    parts: [{ type: "text", text }],
+    text,
+    seq: list.length + 1,
+    parent_id: null,
+    status: "completed",
+    created_at: now,
+  });
+  list.push({
+    id: `m-${++msgSeq}`,
+    session_id: sessionId,
+    role: "assistant",
+    parts: [{ type: "text", text: `（mock）收到：${text}` }],
+    text: `（mock）收到：${text}`,
+    seq: list.length + 1,
+    parent_id: null,
+    status: "completed",
+    created_at: now,
+  });
+  messages.set(sessionId, list);
+
+  const found = allSessions.find((item) => item.session_id === sessionId);
+  if (found) {
+    found.message_count = list.length;
+    found.updated_at = "刚刚";
+  }
+  return delay({
+    run_id: `run-${(++runSeq).toString(16).padStart(4, "0")}`,
+    status: "completed",
+    output: `（mock）收到：${text}`,
+  }, 600);
 }

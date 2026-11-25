@@ -28,13 +28,42 @@ export interface SessionSummary {
   title: string;
   status: string;
   message_count: number;
-  updated_at: string;
+  updated_at?: string;
 }
 
 /** 会话详情。 */
 export interface SessionDetail extends SessionSummary {
   tenant_id?: string;
   created_at?: string;
+}
+
+/** 消息内容块（text / tool_call / tool_result / thinking）。 */
+export interface MessagePart {
+  type: string;
+  text?: string;
+  name?: string;
+  arguments?: Record<string, unknown>;
+  content?: string;
+}
+
+/** 单条会话消息。 */
+export interface ChatMessage {
+  id: string;
+  session_id: string;
+  role: "user" | "assistant" | "system" | "tool" | string;
+  parts: MessagePart[];
+  text: string;
+  seq: number;
+  parent_id: string | null;
+  status: string;
+  created_at: string | null;
+}
+
+/** 消息列表（seq 游标分页）。 */
+export interface ChatMessageListData {
+  items: ChatMessage[];
+  next_cursor: number;
+  has_more: boolean;
 }
 
 /** 会话列表分页数据。 */
@@ -51,5 +80,5 @@ export interface RunData {
   status: "running" | "completed" | "failed" | "cancelled" | string;
   output: string | null;
   error?: string | null;
-  metrics?: Record<string, number>;
+  metrics?: Record<string, number | string>;
 }

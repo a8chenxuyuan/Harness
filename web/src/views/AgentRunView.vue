@@ -83,7 +83,8 @@ const statusText = computed(() => {
 
 const elapsedText = computed(() => {
   if (!run.value) return "—";
-  if (run.value.metrics?.elapsed_ms) return `${(run.value.metrics.elapsed_ms / 1000).toFixed(1)}s`;
+  const elapsed = run.value.metrics?.elapsed_ms;
+  if (typeof elapsed === "number") return `${(elapsed / 1000).toFixed(1)}s`;
   if (!startedAt.value) return "—";
   return `${((now.value - startedAt.value) / 1000).toFixed(1)}s`;
 });
