@@ -12,7 +12,7 @@
 --         {"type":"tool_call","name":"...","arguments":{...}} /
 --         {"type":"tool_result","tool_call_id":"...","content":"..."} /
 --         {"type":"thinking","text":"..."}
---       PG 侧列类型为 JSONB；应用层按字符串读写（SQLite 兼容），
+--       PG 侧列类型为 JSONB，应用层实体按 JSON 列表读写（SQLite 侧为 JSON 文本），
 --       需要 JSON 检索时在 PG 上直接对 parts 建表达式索引即可。
 --
 -- 幂等：IF NOT EXISTS / COMMENT 覆盖写，可重复执行。

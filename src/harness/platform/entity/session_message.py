@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Any
 
 try:
     from sqlmodel import Field, SQLModel  # type: ignore
-    from sqlalchemy import Column, Text  # type: ignore
+    from sqlalchemy import Column, JSON, Text  # type: ignore
+    from sqlalchemy.dialects.postgresql import JSONB  # type: ignore
 except Exception:  # noqa: BLE001
     class Field:  # type: ignore[no-redef]
         def __init__(self, *a, **kw): ...
@@ -17,7 +19,7 @@ except Exception:  # noqa: BLE001
 class SessionMessage(SQLModel, table=True):  # noqa: F811
     """会话消息表。
 
-    ``parts`` 存 JSON 数组字符串（PG 侧列为 JSONB，SQLite 侧为 TEXT），
+    ``parts`` 存内容块数组：PG 侧为 JSONB，SQLite 侧为 JSON（TEXT），
     元素结构见 ``sql/2026/11/V20261125_session_messages_create.sql``。
     """
 
@@ -28,7 +30,12 @@ class SessionMessage(SQLModel, table=True):  # noqa: F811
     tenant_id: str = Field(index=True, max_length=36)
     user_id: str = Field(default="", max_length=36)
     role: str = Field(max_length=16)
-    parts: str = Field(default="[]", sa_column=Column("parts", Text))
+    parts: list[dict[str, Any]] = Field(
+        default_factory=list,
+        sa_column=Column(
+            "parts", JSON().with_variant(JSONB(), "postgresql"), nullable=False
+        ),
+    )
     text: str = Field(default="", sa_column=Column("text", Text))
     seq: int = Field(default=0)
     parent_id: str | None = Field(default=None, max_length=64)

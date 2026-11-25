@@ -1325,6 +1325,18 @@
       "SessionResponse": {
         "description": "GET /api/v1/sessions/{id} 响应体。",
         "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
           "message_count": {
             "default": 0,
             "title": "Message Count",
@@ -1343,6 +1355,18 @@
             "default": "",
             "title": "Title",
             "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
           }
         },
         "required": [

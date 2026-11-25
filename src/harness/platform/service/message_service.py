@@ -69,7 +69,7 @@ class MessageService:
             tenant_id=self.user.tenant_id,
             user_id=self.user.user_id,
             role=req.role,
-            parts=json.dumps(parts, ensure_ascii=False),
+            parts=parts,
             text=text,
             seq=seq,
             parent_id=req.parent_id,
@@ -111,15 +111,18 @@ class MessageService:
 
     @staticmethod
     def _to_response(record: SessionMessage) -> MessageResponse:
-        try:
-            parts = json.loads(record.parts or "[]")
-        except (TypeError, ValueError):
-            parts = []
+        """parts 在 PG 为 JSONB、SQLite 为 JSON，正常读出已是列表。"""
+        raw = record.parts
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw or "[]")
+            except (TypeError, ValueError):
+                raw = []
         return MessageResponse(
             id=record.id,
             session_id=record.session_id,
             role=record.role,
-            parts=parts if isinstance(parts, list) else [],
+            parts=raw if isinstance(raw, list) else [],
             text=record.text,
             seq=record.seq,
             parent_id=record.parent_id,
