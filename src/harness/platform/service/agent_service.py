@@ -93,23 +93,41 @@ class AgentService:
         return await self._run_single(goal, run_id)
 
     async def _run_coordinator(self, goal: str, run_id: str) -> dict[str, Any]:
-        """多 Agent 编排完整链路。"""
-        from harness.orchestration import CoordinatorAgent
+        """多 Agent 编排：Plan → Dispatch → Aggregate。"""
+        from harness.platform.service.plan_service import PlanService
 
-        coord = CoordinatorAgent(session_id=run_id)
-        result = coord.run(goal=goal)
+        coord = PlanService.build_coordinator()
+        result = await coord.run(goal=goal)
+        ok = bool(result.get("terminated"))
+        outputs = result.get("outputs") or {}
+        output = "\n".join(
+            str(value) for value in outputs.values() if value
+        ) if ok else None
         return {
             "run_id": run_id,
-            "status": result.get("status", "unknown"),
-            "output": result.get("output"),
-            "metrics": result.get("metrics"),
+            "status": "success" if ok else "failed",
+            "output": output,
+            "metrics": {
+                "total": result.get("total", 0),
+                "done": result.get("done", 0),
+                "failed": result.get("failed", 0),
+                "wall_seconds": result.get("wall_seconds", 0),
+            },
         }
 
     async def _run_single(self, goal: str, run_id: str) -> dict[str, Any]:
         """单 Agent 直接执行。"""
         from harness.agents.react_agent import ReActAgent
+        from harness.platform.service.model_factory import (
+            build_default_model,
+            build_default_tools,
+        )
 
-        agent = ReActAgent(session_id=run_id)
+        agent = ReActAgent(
+            model=build_default_model(),
+            tools=build_default_tools(),
+            session_id=run_id,
+        )
         state = await agent.run_loop(goal)
         return {
             "run_id": run_id,

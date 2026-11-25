@@ -161,37 +161,17 @@ class PlanService:
     @staticmethod
     def build_coordinator():
         """按当前 Settings 构造 Coordinator（模型凭据缺失时明确报错）。"""
-        from harness.common.config.settings import Settings
-        from harness.core.model.openai_compat import OpenAICompat
         from harness.core.permission.engine import PermissionEngine
         from harness.core.permission.mode import PermissionMode
-        from harness.core.tool.builtin import (
-            BashTool,
-            HttpGetTool,
-            ReadFileTool,
-            WriteFileTool,
-        )
-        from harness.core.tool.registry import ToolRegistry
         from harness.orchestration.coordinator import CoordinatorAgent, WorkerSpec
-
-        settings = Settings()
-        if not settings.model.has_credentials():
-            raise RuntimeError(
-                "模型凭据未配置（MODEL__API_KEY / HARNESS_MODEL__API_KEY），无法执行 Plan"
-            )
-
-        model = OpenAICompat(
-            base_url=settings.model.base_url or "https://api.deepseek.com/v1",
-            api_key=settings.model.api_key,
-            model=settings.model.model or "deepseek-chat",
+        from harness.platform.service.model_factory import (
+            build_default_model,
+            build_default_tools,
         )
-        tools = ToolRegistry()
-        for tool in (ReadFileTool(), WriteFileTool(), BashTool(), HttpGetTool()):
-            tools.register(tool)
 
         return CoordinatorAgent(
-            model=model,
-            tools=tools,
+            model=build_default_model(),
+            tools=build_default_tools(),
             permission_engine=PermissionEngine(PermissionMode.DEFAULT),
             worker_specs=[
                 WorkerSpec(
