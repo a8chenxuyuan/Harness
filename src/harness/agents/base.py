@@ -19,11 +19,11 @@ import uuid
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from harness.context.assembler import ContextAssembler
-    from harness.event.bus import EventBus
-    from harness.loop.state import AgentState
-    from harness.model.base import Model
-    from harness.tool.registry import ToolRegistry
+    from harness.core.context.assembler import ContextAssembler
+    from harness.common.event.bus import EventBus
+    from harness.core.loop.state import AgentState
+    from harness.core.model.base import Model
+    from harness.core.tool.registry import ToolRegistry
 
 
 class Agent(abc.ABC):
@@ -60,9 +60,9 @@ class Agent(abc.ABC):
             max_steps: 循环硬上限。
             session_id: 会话标识；None 自动生成。
         """
-        from harness.event.bus import get_event_bus
-        from harness.loop.state import AgentState
-        from harness.tool.registry import ToolRegistry
+        from harness.common.event.bus import get_event_bus
+        from harness.core.loop.state import AgentState
+        from harness.core.tool.registry import ToolRegistry
 
         self.model = model
         self.tools = tools or ToolRegistry()
@@ -95,10 +95,10 @@ class Agent(abc.ABC):
     async def stop(self) -> None:
         """中断正在跑的循环（Phase 7 interrupt）。
 
-        若当前没有 run 中的循环，noop；若有，则调用 :func:`harness.loop.interrupt`
+        若当前没有 run 中的循环，noop；若有，则调用 :func:`harness.core.loop.interrupt`
         把 ``stopping`` 设为 True 并在本轮收尾时退出。
         """
-        from harness.loop.interrupt import interrupt
+        from harness.core.loop.interrupt import interrupt
 
         if self._state is not None and self._running:
             interrupt(self._state, reason="agent_stop")
@@ -115,8 +115,8 @@ class Agent(abc.ABC):
         Returns:
             追加后（可能带恢复）的 AgentState。
         """
-        from harness.message.helpers import user_message
-        from harness.loop.interrupt import interrupt
+        from harness.common.message.helpers import user_message
+        from harness.core.loop.interrupt import interrupt
 
         if self._state is None:
             # 还没 run 过，直接初始化 state

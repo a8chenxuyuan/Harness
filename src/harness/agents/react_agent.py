@@ -21,12 +21,12 @@ from typing import TYPE_CHECKING, Any, AsyncIterator
 from .base import Agent
 
 if TYPE_CHECKING:
-    from harness.context.assembler import ContextAssembler
-    from harness.event.bus import EventBus
-    from harness.loop.state import AgentState
-    from harness.model.base import Model
-    from harness.session.checkpoint import CheckpointManager
-    from harness.tool.registry import ToolRegistry
+    from harness.core.context.assembler import ContextAssembler
+    from harness.common.event.bus import EventBus
+    from harness.core.loop.state import AgentState
+    from harness.core.model.base import Model
+    from harness.core.session.checkpoint import CheckpointManager
+    from harness.core.tool.registry import ToolRegistry
 
 log = logging.getLogger(__name__)
 
@@ -89,7 +89,7 @@ class ReActAgent(Agent):
         state = await self._ensure_state()
 
         # 2. 追加 user message
-        from harness.message.helpers import user_message
+        from harness.common.message.helpers import user_message
 
         state.messages.append(user_message(user_input))
 
@@ -122,10 +122,10 @@ class ReActAgent(Agent):
         Yields:
             每个 LoopStreamEvent 实例。
         """
-        from harness.loop.streaming import LoopStreamEvent, run_with_stream
-        from harness.message.helpers import user_message
-        from harness.loop.state import AgentState
-        from harness.tool.budget import ToolBudget
+        from harness.core.loop.streaming import LoopStreamEvent, run_with_stream
+        from harness.common.message.helpers import user_message
+        from harness.core.loop.state import AgentState
+        from harness.core.tool.budget import ToolBudget
 
         state = await self._ensure_state()
         state.messages.append(user_message(user_input))
@@ -154,8 +154,8 @@ class ReActAgent(Agent):
 
         若 checkpoint 可用，先尝试从 checkpoint 恢复 session_id 对应的 state。
         """
-        from harness.loop.state import AgentState
-        from harness.message.helpers import system_message
+        from harness.core.loop.state import AgentState
+        from harness.common.message.helpers import system_message
 
         if self._state is not None:
             return self._state
@@ -193,8 +193,8 @@ class ReActAgent(Agent):
 
     async def _run_loop(self, state: "AgentState") -> "AgentState":
         """实际跑 ReAct 循环；这里选 run_loop（简单 runner），避免 LangGraph 硬依赖。"""
-        from harness.observability.metrics import record_loop_iteration, record_ttft
-        from harness.loop.react_graph import run_loop
+        from harness.common.observability.metrics import record_loop_iteration, record_ttft
+        from harness.core.loop.react_graph import run_loop
         import time
 
         start = time.monotonic()
@@ -218,9 +218,9 @@ class ReActAgent(Agent):
         EventBus.publish 是 async 且 handler 失败不冒泡，这里包一层 try。
         """
         try:
-            # harness.event.Event 需要 EventType，但 LoopStreamEvent 只有 event_type 字符串，
+            # harness.common.event.Event 需要 EventType，但 LoopStreamEvent 只有 event_type 字符串，
             # 所以这里用一个轻量包装
-            from harness.event.types import Event, EventType
+            from harness.common.event.types import Event, EventType
 
             etype = EventType(event.event_type)
             bus_event = Event(type=etype, payload=event.payload)
