@@ -3,7 +3,7 @@ import { get, post } from "./http";
 import { mockCancelRun, mockRunStatus, mockStartRun } from "./mock";
 import type { RunData } from "./types";
 
-const useMock = import.meta.env.VITE_USE_MOCK !== "false";
+const useMock = import.meta.env.VITE_USE_MOCK === "true";
 
 /** POST /agents/run（同步执行，前端给足超时） */
 export async function startRun(goal: string): Promise<RunData> {

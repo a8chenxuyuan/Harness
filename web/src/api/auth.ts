@@ -5,7 +5,7 @@ import type { LoginData, UserInfo } from "./types";
 
 export type { LoginData, UserInfo } from "./types";
 
-const useMock = import.meta.env.VITE_USE_MOCK !== "false";
+const useMock = import.meta.env.VITE_USE_MOCK === "true";
 
 /** POST /auth/login */
 export async function login(username: string, password: string): Promise<LoginData> {

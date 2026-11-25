@@ -3,7 +3,7 @@ import { get, post } from "./http";
 import { mockListMessages, mockSendMessage } from "./mock";
 import type { ChatMessageListData, RunData } from "./types";
 
-const useMock = import.meta.env.VITE_USE_MOCK !== "false";
+const useMock = import.meta.env.VITE_USE_MOCK === "true";
 
 /** GET /sessions/{id}/messages?after_seq=&limit= */
 export async function listMessages(

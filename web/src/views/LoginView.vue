@@ -47,7 +47,7 @@
 
         <div class="demo-hint">
           当前为 mock 模式，任意非空账号密码均可登录。<br />
-          接真实后端：把 <code>VITE_USE_MOCK</code> 改为 <code>false</code>。
+          默认连接真实后端；纯前端演示时把 <code>VITE_USE_MOCK</code> 设为 <code>true</code>。
         </div>
       </form>
     </div>

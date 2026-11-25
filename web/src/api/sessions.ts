@@ -3,7 +3,7 @@ import { del, get, post } from "./http";
 import { mockCreateSession, mockGetSession, mockListSessions } from "./mock";
 import type { SessionDetail, SessionListData } from "./types";
 
-const useMock = import.meta.env.VITE_USE_MOCK !== "false";
+const useMock = import.meta.env.VITE_USE_MOCK === "true";
 
 /** POST /sessions */
 export async function createSession(title = ""): Promise<SessionDetail> {
