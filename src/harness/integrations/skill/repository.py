@@ -102,7 +102,17 @@ class SkillRepository:
         )
 
     def _upsert(self, skill: Skill, layer: str) -> None:
-        """按优先级决定是否覆盖。"""
+        """按优先级决定是否覆盖。
+
+        同时把来源层写入 skill.metadata['__layer__']，
+        让 _layer_of() 能正确识别来源（此前不写标记，所有 skill
+        都会被误判为 bundled 层，导致 API 层的来源展示与删除防护失效）。
+        """
+        # 打来源层标记：metadata 为 None 时先建空 dict
+        if skill.metadata is None:
+            skill.metadata = {}
+        skill.metadata["__layer__"] = layer
+
         existing = self._skills.get(skill.name)
         if existing is None:
             self._skills[skill.name] = skill
@@ -124,7 +134,8 @@ class SkillRepository:
             被替换掉的旧 skill（若有），否则自身。
         """
         self._runtime_skills[skill.name] = skill
-        self._skills[skill.name] = skill
+        # 走 _upsert 统一打 __layer__ 标记并按优先级合并
+        self._upsert(skill, LAYER_RUNTIME)
         return skill
 
     def unregister(self, name: str) -> Skill | None:
@@ -139,10 +150,10 @@ class SkillRepository:
             被移除的 skill，不存在返回 None。
         """
         removed = self._runtime_skills.pop(name, None)
-        if removed and self._skills.get(name) is removed:
-            # 若当前顶层就是 runtime 注册的，一并从合并表移除
-            # 但不清 _skills，让高层查询感知不到（除非重 load_all）
-            pass
+        if removed is not None and self._skills.get(name) is removed:
+            # 合并表顶层正是被注销的 runtime skill → 一并移除，
+            # 否则 get_by_name / list_all 仍能看到"已注销"的 skill
+            self._skills.pop(name, None)
         return removed
 
     # --- 查询 ------------------------------------------------------------------
