@@ -279,6 +279,62 @@ export interface SkillVersionsData {
 }
 
 // ---------------------------------------------------------------------------
+// 工具市场 / MCP 注册（W4-EXT-02）
+// ---------------------------------------------------------------------------
+
+/** 工具市场中单个工具的展示项。 */
+export interface ToolMarketItem {
+  name: string;
+  description: string;
+  /** false=写类工具，调试面板拒绝执行 */
+  readonly: boolean;
+  parameters: Record<string, unknown>;
+  /** builtin（内置）/ mcp（外部 MCP server） */
+  source: string;
+  server: string | null;
+}
+
+/** GET /api/v1/tools/market 响应。 */
+export interface ToolMarketData {
+  items: ToolMarketItem[];
+  total: number;
+}
+
+/** POST /api/v1/tools/{name}/debug 响应。 */
+export interface ToolDebugData {
+  ok: boolean;
+  output: string;
+  error: string | null;
+  execution_time_ms: number;
+}
+
+/** 已注册 MCP server 的展示项。 */
+export interface McpServerItem {
+  name: string;
+  command: string;
+  args: string[];
+  /** 环境变量键名列表（值不回传） */
+  env_keys: string[];
+  registered_at: string;
+  tools: string[];
+  tool_count: number;
+}
+
+/** GET /api/v1/mcp/servers 响应。 */
+export interface McpServerListData {
+  items: McpServerItem[];
+  total: number;
+}
+
+/** POST /api/v1/mcp/servers 请求体。 */
+export interface McpServerRegisterBody {
+  name: string;
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+}
+
+// ---------------------------------------------------------------------------
 // Memory 管理（W4-02）
 // ---------------------------------------------------------------------------
 

@@ -19,6 +19,7 @@ from .health import router as health_router
 from .hitl import router as hitl_router
 from .memories import router as memories_router
 from .messages import router as messages_router
+from .mcp import router as mcp_router
 from .observability import router as observability_router
 from .plans import router as plans_router
 from .runs import router as runs_router
@@ -42,6 +43,7 @@ api_router.include_router(hitl_router)
 api_router.include_router(memories_router)
 api_router.include_router(skills_router)
 api_router.include_router(tools_router)
+api_router.include_router(mcp_router)
 api_router.include_router(observability_router)
 api_router.include_router(channels_router)
 api_router.include_router(tenant_router)

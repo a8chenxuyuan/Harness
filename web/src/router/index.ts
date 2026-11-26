@@ -65,6 +65,12 @@ const router = createRouter({
           component: () => import("@/views/MemoryListView.vue"),
           meta: { title: "长期记忆" },
         },
+        {
+          path: "tools",
+          name: "tools",
+          component: () => import("@/views/ToolMarketView.vue"),
+          meta: { title: "工具市场" },
+        },
       ],
     },
     { path: "/:pathMatch(.*)*", redirect: "/" },
