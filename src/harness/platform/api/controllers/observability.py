@@ -33,7 +33,7 @@ async def ready(
     """就绪探针：数据库可执行查询 + 工具目录非空。"""
     from sqlalchemy import text
 
-    from harness.platform.api.v1.tools import tool_catalog
+    from harness.platform.api.controllers.tools import tool_catalog
 
     try:
         await db.exec(text("SELECT 1"))

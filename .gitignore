@@ -24,7 +24,12 @@ benchmark_report.json
 .ruff_cache/
 .mypy_cache/
 
-# 示例脚本不上传（tests/ 纳入版本管理）
+# 测试 / SQL 迁移留痕 / 文档：只在本地维护，不上传代码库
+/tests/
+/sql/
+/docs/
+
+# 示例脚本不上传
 examples/
 
 .idea/
