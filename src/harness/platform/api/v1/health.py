@@ -12,7 +12,7 @@ from typing import Any
 from fastapi import APIRouter, Query
 from fastapi.responses import PlainTextResponse
 
-from harness.platform.api.dto.common import ApiResponse
+from harness.platform.api.vo.envelope_vo import ApiResponse
 
 router = APIRouter(tags=["health"])
 

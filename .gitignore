@@ -10,7 +10,10 @@ dist/
 .env
 .env.*
 .env.local
-config/
+!.env.example
+!/web/.env.example
+# 仅忽略仓库根目录的本地运行配置目录，避免误伤 src 下的 config 源码包
+/config/
 
 *.db
 *.db-journal
@@ -21,9 +24,11 @@ benchmark_report.json
 .ruff_cache/
 .mypy_cache/
 
-# 测试与示例脚本不上传
-tests/
+# 示例脚本不上传（tests/ 纳入版本管理）
 examples/
 
 .idea/
 .vscode/
+
+# 本地 skill / IDE 配置不上传
+.trae/

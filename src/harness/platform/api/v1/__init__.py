@@ -13,8 +13,10 @@ from .auth import router as auth_router
 from .channels import router as channels_router
 from .health import router as health_router
 from .hitl import router as hitl_router
+from .messages import router as messages_router
 from .observability import router as observability_router
 from .plans import router as plans_router
+from .runs import router as runs_router
 from .sessions import router as sessions_router
 from .steer import router as steer_router
 from .tools import router as tools_router
@@ -25,6 +27,8 @@ api_v1.include_router(auth_router)
 api_v1.include_router(agents_router)
 api_v1.include_router(plans_router)
 api_v1.include_router(sessions_router)
+api_v1.include_router(messages_router)
+api_v1.include_router(runs_router)
 api_v1.include_router(steer_router)
 api_v1.include_router(hitl_router)
 api_v1.include_router(tools_router)

@@ -74,6 +74,29 @@ class Usage:
     cache_read_tokens: int = 0
 
 
+def merge_usage(base: Usage, extra: Usage | None) -> Usage:
+    """合并两次 usage 上报，同字段取较大值。
+
+    供应商可能在流开头报输入 token、结尾报输出 token，同一轮内不能相加，
+    否则会把「累计值」重复计入；按字段取最大值即得到该轮完整用量。
+
+    Args:
+        base: 已累计的 usage。
+        extra: 本块携带的 usage；None 表示该块没有用量信息。
+
+    Returns:
+        合并后的新 Usage 实例（不修改入参）。
+    """
+    if extra is None:
+        return base
+    return Usage(
+        prompt_tokens=max(base.prompt_tokens, extra.prompt_tokens),
+        completion_tokens=max(base.completion_tokens, extra.completion_tokens),
+        total_tokens=max(base.total_tokens, extra.total_tokens),
+        cache_read_tokens=max(base.cache_read_tokens, extra.cache_read_tokens),
+    )
+
+
 @dataclass
 class ChatChunk:
     """流式输出的一块增量。
@@ -86,12 +109,14 @@ class ChatChunk:
         tool_calls_delta: 本次追加的工具调用片段列表。
         finish_reason: 生成结束原因（如 "stop"、"tool_calls"、"length"）；
             中间块为 None。
+        usage: 该块携带的 token 用量；多数块为 None，只在流末尾出现。
         raw: 原始 SSE payload，用于上层做 debug 或供应商专属解析。
     """
 
     delta: str = ""
     tool_calls_delta: list[ToolCallDelta] = field(default_factory=list)
     finish_reason: str | None = None
+    usage: Usage | None = None
     raw: dict[str, Any] = field(default_factory=dict)
 
 

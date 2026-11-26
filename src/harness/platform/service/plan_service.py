@@ -14,9 +14,9 @@ import json
 import logging
 from typing import Any
 
-from harness.platform.api.dto.auth import UserInfo
-from harness.platform.models.plan import PlanRecord
-from harness.platform.repository.plan_repo import PlanRepository
+from harness.platform.api.vo.auth_vo import UserInfo
+from harness.platform.entity.plan import PlanRecord
+from harness.platform.repository.plan_repository import PlanRepository
 
 log = logging.getLogger(__name__)
 
@@ -161,42 +161,25 @@ class PlanService:
     @staticmethod
     def build_coordinator():
         """按当前 Settings 构造 Coordinator（模型凭据缺失时明确报错）。"""
-        from harness.common.config.settings import Settings
-        from harness.core.model.openai_compat import OpenAICompat
         from harness.core.permission.engine import PermissionEngine
         from harness.core.permission.mode import PermissionMode
-        from harness.core.tool.builtin import (
-            BashTool,
-            HttpGetTool,
-            ReadFileTool,
-            WriteFileTool,
-        )
-        from harness.core.tool.registry import ToolRegistry
         from harness.orchestration.coordinator import CoordinatorAgent, WorkerSpec
-
-        settings = Settings()
-        if not settings.model.has_credentials():
-            raise RuntimeError(
-                "模型凭据未配置（MODEL__API_KEY / HARNESS_MODEL__API_KEY），无法执行 Plan"
-            )
-
-        model = OpenAICompat(
-            base_url=settings.model.base_url or "https://api.deepseek.com/v1",
-            api_key=settings.model.api_key,
-            model=settings.model.model or "deepseek-chat",
+        from harness.platform.service.model_factory import (
+            build_default_model,
+            build_default_tools,
         )
-        tools = ToolRegistry()
-        for tool in (ReadFileTool(), WriteFileTool(), BashTool(), HttpGetTool()):
-            tools.register(tool)
 
         return CoordinatorAgent(
-            model=model,
-            tools=tools,
+            model=build_default_model(),
+            tools=build_default_tools(),
             permission_engine=PermissionEngine(PermissionMode.DEFAULT),
             worker_specs=[
                 WorkerSpec(
                     name="worker",
-                    system_prompt="你是 harness 计划执行 Worker。按步骤目标完成任务并输出结论。",
+                    system_prompt=(
+                        "你是 harness 计划执行 Worker。按步骤目标完成任务并输出结论。"
+                        "优先直接作答，不要调用工具；只有任务明确要求读写文件或访问网络时才使用工具。"
+                    ),
                     tools_allowed=(),
                 )
             ],

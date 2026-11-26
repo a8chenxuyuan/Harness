@@ -14,7 +14,13 @@ import json
 from typing import TYPE_CHECKING, Any, AsyncIterator
 
 from harness.common.message.helpers import tool_result_message
-from harness.core.model.types import ChatChunk, GenerateOptions, ToolCall
+from harness.core.model.types import (
+    ChatChunk,
+    GenerateOptions,
+    ToolCall,
+    Usage,
+    merge_usage,
+)
 from harness.core.tool.base import ToolResult
 from harness.core.tool.budget import ToolBudget
 
@@ -182,6 +188,7 @@ async def execute_with_overlap(
         tool_json_fragments = _new_tool_call_fragments()
         tool_call_meta = _new_tool_call_meta()
         last_finish_reason = "stop"
+        round_usage = Usage()
 
         yield LoopStreamEvent(event_type=EVENT_ASSEMBLED, payload={"step": state.step})
 
@@ -214,6 +221,9 @@ async def execute_with_overlap(
             if chunk.finish_reason is not None:
                 last_finish_reason = chunk.finish_reason
 
+            round_usage = merge_usage(round_usage, chunk.usage)
+
+        state.add_usage(round_usage)
         tool_calls = _assemble_tool_calls(tool_call_meta, tool_json_fragments)
         tool_calls.sort(key=lambda tc: tc.id)  # 稳定顺序
         full_text = "".join(text_parts)

@@ -41,7 +41,7 @@ async def record_audit(
         detail: 附加详情，序列化后写入 detail 列。
     """
     try:
-        from harness.platform.repository.audit_repo import AuditRepository
+        from harness.platform.repository.audit_repository import AuditRepository
 
         await AuditRepository(session).log(
             tenant_id=tenant_id,

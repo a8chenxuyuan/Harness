@@ -96,12 +96,12 @@ def _init_observability() -> None:
 
 
 async def _init_db() -> None:
-    """首次启动时 init_db（建表）。
+    """首次启动时 init_db（按实体建表）。
 
-    生产推荐 Alembic，但开发/测试环境 init_db 足够。失败只打 warn。
+    正式环境以 sql/ 下的留痕脚本为准，这里只兜底开发/测试环境。失败只打 warn。
     """
     try:
-        from harness.platform.db.engine import init_db as _init
+        from harness.platform.infra.engine import init_db as _init
         await _init()
         log.info("db.engine: 初始化完成")
     except Exception as exc:  # noqa: BLE001
@@ -111,7 +111,7 @@ async def _init_db() -> None:
 async def _close_db() -> None:
     """关闭数据库引擎。"""
     try:
-        from harness.platform.db.engine import close_db
+        from harness.platform.infra.engine import close_db
         await close_db()
     except Exception:  # noqa: BLE001
         pass

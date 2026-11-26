@@ -1,9 +1,11 @@
-"""API 请求/响应 DTO（对应 Java Spring 的 dto/request + dto/response）。
+"""API 入参（DTO）层。
 
-原则：
-    - Controller 入参用 ``Request`` 结尾的模型
-    - Controller 出参用 ``Response`` 结尾的模型
-    - 所有字段都带明确 description（FastAPI 自动进 OpenAPI 文档）
+按业务域一文件，文件名统一 ``<域>_dto.py``，只放 Controller 请求体模型：
+    - ``auth_dto.py``     登录 / 刷新 / 注册
+    - ``agent_dto.py``    Agent 运行
+    - ``plan_dto.py``     Plan 创建
+    - ``session_dto.py``  会话创建
+    - ``steer_dto.py``    Steering 操作
+
+约定：Controller 入参一律用本层模型，禁止接收实体或 VO。
 """
-
-from .common import ApiResponse, ApiErrorResponse

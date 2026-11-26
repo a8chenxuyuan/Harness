@@ -70,9 +70,11 @@ class WorkerAgent:
         self.max_steps = max_steps
         self._system_prompt = system_prompt
         # 独立装配器：前缀 = Worker 专属提示 + Worker 工具 schema，构造期定型
+        # 上下文窗口跟随模型的真实能力（如 DeepSeek V4 为 1M），不再固定 32k
         self.assembler = assembler or ContextAssembler(
             system_prompt=system_prompt,
             tool_schemas=tools.list_for_llm(),
+            max_context_tokens=model.capabilities.max_context_tokens,
         )
 
     @property
@@ -115,15 +117,20 @@ class WorkerAgent:
                 wall_seconds=time.monotonic() - start,
             )
 
-        # streaming 层已吞掉工具异常（ToolResult.ok=False 不冒泡），
-        # 这里主动检查 state.tool_results 中是否有 is_error=True 的工具结果
-        if _has_tool_errors(state):
+        # streaming 层已吞掉工具异常（ToolResult.ok=False 不冒泡）。
+        # 仅当「有工具错误且模型没给出任何最终回答」才判失败；
+        # 模型已经根据错误信息恢复并作答时，按 D1.3 的约定不拖垮整轮。
+        if _has_tool_errors(state) and not _final_text(state).strip():
             tool_msg = state.tool_results[-1] if state.tool_results else None
             err_text = (tool_msg.content[0].content if tool_msg else "unknown")  # ToolResultBlock.content 是 error 文本
             result = TaskResult(
                 task_id=task.task_id,
                 status=TaskStatus.FAILED,
                 error=f"工具执行失败: {err_text}",
+                tokens_used=state.token_usage.total_tokens,
+                prompt_tokens=state.token_usage.prompt_tokens,
+                completion_tokens=state.token_usage.completion_tokens,
+                cache_read_tokens=state.token_usage.cache_read_tokens,
                 wall_seconds=time.monotonic() - start,
                 rounds=state.step,
                 prefix_hash=self.prefix_hash,
@@ -164,6 +171,10 @@ class WorkerAgent:
             task_id=task.task_id,
             status=TaskStatus.DONE,
             output=final_text,
+            tokens_used=state.token_usage.total_tokens,
+            prompt_tokens=state.token_usage.prompt_tokens,
+            completion_tokens=state.token_usage.completion_tokens,
+            cache_read_tokens=state.token_usage.cache_read_tokens,
             rounds=rounds,
             wall_seconds=wall,
             prefix_hash=self.prefix_hash,

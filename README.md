@@ -25,7 +25,7 @@ python examples/01_basic.py
 python examples/01_basic.py
 ```
 
-6 个 example 覆盖 roadmap Phase 1-17 的全部核心机制：
+6 个 example 覆盖平台核心机制：
 
 | # | 文件 | 演示 |
 |---|------|------|
@@ -34,7 +34,7 @@ python examples/01_basic.py
 | 03 | `examples/03_steering.py` | Phase 7 中途插话 `agent.steer()` |
 | 04 | `examples/04_hitl.py` | Phase 9 DEFAULT → ASK → HITL pending → approve |
 | 05 | `examples/05_skill_memory_mcp.py` | Phase 13/14/15 三者组合（无 MCP server graceful skip） |
-| 06 | `examples/06_benchmark.py` | roadmap §0.6 的 8 个全局指标，无 Key 时 fake_provider 管道验证 |
+| 06 | `examples/06_benchmark.py` | 8 个全局运行时指标，无 Key 时 fake_provider 管道验证 |
 
 ## 架构
 
@@ -60,7 +60,7 @@ src/harness/
 └── extension/       # edge: Middleware + Hook + JsonlTraceExporter
 ```
 
-## 全局运行时指标（roadmap §0.6）
+## 全局运行时指标
 
 | 指标 | 目标 | 说明 |
 |------|------|------|
@@ -99,7 +99,7 @@ python examples/06_benchmark.py         # 输出 8 指标 JSON
 
 ## 目录结构
 
-参见 `docs/implementation-roadmap.md` §0.5。完整设计见 `docs/framework-design.md`。
+源码按 `src/harness/` 下的分层目录组织，各子包职责见上方架构图。
 
 ## 注意事项
 

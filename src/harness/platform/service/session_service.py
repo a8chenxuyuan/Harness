@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import uuid
 
-from harness.platform.api.dto.auth import UserInfo
-from harness.platform.api.dto.session import (
+from harness.platform.api.vo.auth_vo import UserInfo
+from harness.platform.api.vo.session_vo import (
     SessionListResponse,
     SessionResponse,
 )
 from harness.platform.api.exceptions import BizError
-from harness.platform.models.session import SessionRecord
-from harness.platform.repository.session_repo import SessionRepository
+from harness.platform.entity.session import SessionRecord
+from harness.platform.repository.session_repository import SessionRepository
 
 
 class SessionService:
@@ -40,8 +40,10 @@ class SessionService:
         return self._to_response(record)
 
     async def get_session(self, session_id: str) -> SessionResponse:
-        """获取会话详情（租户隔离，别人的会话查不到）。"""
-        record = await self.repo.get_by_id(self.user.tenant_id, session_id)
+        """获取会话详情（租户 + 属主隔离，别人的会话查不到）。"""
+        record = await self.repo.get_by_owner(
+            self.user.tenant_id, self.user.user_id, session_id
+        )
         if record is None:
             raise BizError(404, f"session {session_id} not found")
         return self._to_response(record)
@@ -62,8 +64,10 @@ class SessionService:
         return SessionListResponse(items=items, total=total, page=page, size=size)
 
     async def delete_session(self, session_id: str) -> None:
-        """删除会话（租户隔离）。"""
-        record = await self.repo.get_by_id(self.user.tenant_id, session_id)
+        """删除会话（租户 + 属主隔离）。"""
+        record = await self.repo.get_by_owner(
+            self.user.tenant_id, self.user.user_id, session_id
+        )
         if record is None:
             raise BizError(404, f"session {session_id} not found")
         await self.repo.delete(record.session_id)
@@ -79,4 +83,6 @@ class SessionService:
             title=r.title,
             status=r.status,
             message_count=r.message_count,
+            created_at=r.created_at,
+            updated_at=r.updated_at,
         )

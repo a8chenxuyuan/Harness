@@ -123,11 +123,21 @@ class CoordinatorAgent:
             items = json.loads(match.group(0) if match else raw)
         except json.JSONDecodeError as exc:
             raise ConfigurationError(f"LLM 拆解结果不是合法 JSON: {raw[:200]}") from exc
+        # 模型可能只返回单个对象，也可能把 depends_on 写成数字下标，统一兜底
+        if isinstance(items, dict):
+            items = [items]
+        if not isinstance(items, list):
+            raise ConfigurationError(f"LLM 拆解结果不是数组: {raw[:200]}")
         return _fill_ids([
-            TaskSpec(task_id=str(it.get("task_id", "")), goal=str(it.get("goal", "")),
-                     input=str(it.get("input", "")), worker=it.get("worker"),
-                     depends_on=tuple(it.get("depends_on", [])))
+            TaskSpec(
+                task_id=str(it.get("task_id", "")),
+                goal=str(it.get("goal", "")),
+                input=str(it.get("input", "")),
+                worker=str(it["worker"]) if it.get("worker") else None,
+                depends_on=tuple(str(d) for d in (it.get("depends_on") or [])),
+            )
             for it in items
+            if isinstance(it, dict)
         ])
 
     # --- 派发 + 聚合 ------------------------------------------------------------
@@ -173,6 +183,10 @@ class CoordinatorAgent:
             "done": len(done),
             "failed": len(failed),
             "wall_seconds": round(max((r.wall_seconds for r in results), default=0.0), 3),
+            "prompt_tokens": sum(r.prompt_tokens for r in results),
+            "completion_tokens": sum(r.completion_tokens for r in results),
+            "total_tokens": sum(r.tokens_used for r in results),
+            "cache_read_tokens": sum(r.cache_read_tokens for r in results),
             "outputs": {r.task_id: r.output for r in results},
             "prefix_hashes": {r.task_id: r.prefix_hash for r in results},
             "terminated": len(failed) == 0,
@@ -224,7 +238,8 @@ class CoordinatorAgent:
         from harness.core.model.types import GenerateOptions
 
         prompt = ("你是任务拆解协调者。把总目标拆成 1-5 个子任务，只输出 JSON 数组，"
-                  "每个元素含 task_id/goal/input/worker/depends_on 字段，不要输出其他内容。")
+                  "每个元素含 task_id/goal/input/worker/depends_on 字段，不要输出其他内容。"
+                  "worker 字段固定填 \"worker\"。")
         response = await self.model.generate(
             [system_message(prompt), user_message(goal)], [], GenerateOptions()
         )

@@ -66,6 +66,9 @@ class TaskResult(BaseModel):
         status: 终态（DONE / FAILED；PENDING/RUNNING 只在中间态出现）。
         output: 最终产出文本（取 Worker 最后一轮 assistant 纯文本）。
         tokens_used: 粗粒度 token 消耗（prompt+completion，无供应商 usage 时为 0）。
+        prompt_tokens: 本次执行的输入 token。
+        completion_tokens: 本次执行的输出 token。
+        cache_read_tokens: 本次执行命中的缓存 token。
         error: 失败原因；成功为 None。
         wall_seconds: 本次执行的墙钟耗时。
         rounds: 实际跑的 ReAct 轮次。
@@ -80,6 +83,9 @@ class TaskResult(BaseModel):
     status: TaskStatus
     output: str = ""
     tokens_used: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    cache_read_tokens: int = 0
     error: str | None = None
     wall_seconds: float = 0.0
     rounds: int = 0

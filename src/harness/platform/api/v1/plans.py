@@ -8,10 +8,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from harness.platform.api.deps import get_current_user, get_db
-from harness.platform.api.dto.auth import UserInfo
-from harness.platform.api.dto.common import ApiResponse
-from harness.platform.api.dto.plan import PlanListResponse, PlanSummary
-from harness.platform.repository.plan_repo import PlanRepository
+from harness.platform.api.vo.auth_vo import UserInfo
+from harness.platform.api.vo.envelope_vo import ApiResponse
+from harness.platform.api.vo.plan_vo import PlanListResponse, PlanSummary
+from harness.platform.repository.plan_repository import PlanRepository
 from harness.platform.service.plan_service import PlanService
 
 router = APIRouter(prefix="/plans", tags=["plans"])

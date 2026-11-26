@@ -13,7 +13,7 @@ from typing import Any
 
 from fastapi import Depends, Header, HTTPException, status
 
-from harness.platform.api.dto.auth import UserInfo
+from harness.platform.api.vo.auth_vo import UserInfo
 
 log = logging.getLogger(__name__)
 
@@ -45,9 +45,9 @@ def get_gateway_router() -> Any:
 async def get_db():
     """FastAPI dependency：yield 一个 AsyncSession，请求结束自动 close。
 
-    底层用 ``harness.platform.db.engine.get_session_factory`` 单例。
+    底层用 ``harness.platform.infra.engine.get_session_factory`` 单例。
     """
-    from harness.platform.db.engine import get_session_factory
+    from harness.platform.infra.engine import get_session_factory
     factory = get_session_factory()
     async with factory() as session:
         yield session
