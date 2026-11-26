@@ -32,6 +32,8 @@ def create_app() -> FastAPI:
         # ===== startup =====
         _init_observability()
         await _init_db()
+        # 依赖 init_db 之后执行：把重启前遗留的 running / streaming 收敛到终态
+        await _recover_interrupted()
         log.info("Harness API server startup complete")
         yield
         # ===== shutdown =====
@@ -121,6 +123,16 @@ async def _init_db() -> None:
         log.info("db.engine: 初始化完成")
     except Exception as exc:  # noqa: BLE001
         log.warning("db.engine: 初始化失败（开发环境可忽略）: %s", exc)
+
+
+async def _recover_interrupted() -> None:
+    """启动恢复：running 运行 / running 计划 → interrupted，streaming 消息 → failed。"""
+    try:
+        from harness.platform.service.recovery_service import recover_interrupted
+
+        await recover_interrupted()
+    except Exception as exc:  # noqa: BLE001 — 恢复失败不阻断启动
+        log.warning("recovery: 启动恢复异常（可忽略）: %s", exc)
 
 
 async def _close_db() -> None:

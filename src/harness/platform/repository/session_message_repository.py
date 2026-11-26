@@ -140,6 +140,23 @@ class SessionMessageRepository(BaseRepository):
         )
         return list(result.all())
 
+    async def mark_statuses(self, from_status: str, to_status: str) -> int:
+        """批量把 ``from_status`` 的消息改为 ``to_status``，返回影响行数。
+
+        启动恢复用：流式消息停留在 streaming 说明进程已中断，
+        统一收尾为 failed，避免前端无限「生成中」。
+        """
+        from sqlalchemy import update
+
+        Record = self.model
+        result = await self.session.exec(
+            update(Record)
+            .where(Record.status == from_status)
+            .values(status=to_status)
+        )
+        await self.session.commit()
+        return int(result.rowcount or 0)
+
     async def list_streaming(self, tenant_id: str, session_id: str):
         """会话内仍处于 streaming 的消息（取消兜底收尾用）。"""
         from sqlmodel import select
