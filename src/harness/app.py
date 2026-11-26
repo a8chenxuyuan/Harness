@@ -3,7 +3,7 @@
 职责：
     1. 构造 FastAPI 实例
     2. 挂中间件（CORS）
-    3. 挂载 API v1 路由 + Gateway WebSocket
+    3. 挂载 API Controller 路由 + Gateway WebSocket
     4. 注册 lifespan（init_db / observability / close_db）
     5. 注册统一异常处理
 
@@ -81,12 +81,12 @@ def create_app() -> FastAPI:
             media_type="text/plain; version=0.0.4; charset=utf-8",
         )
 
-    # ========== API v1 ==========
-    from harness.platform.api.v1 import api_v1
-    app.include_router(api_v1)
+    # ========== API v1（Controller 层） ==========
+    from harness.platform.api.controllers import api_router
+    app.include_router(api_router)
 
     # ========== Gateway WebSocket（渠道接入层） ==========
-    from harness.platform.api.v1.gateway import router as gateway_ws_router
+    from harness.platform.api.controllers.gateway import router as gateway_ws_router
     app.include_router(gateway_ws_router)
 
     return app

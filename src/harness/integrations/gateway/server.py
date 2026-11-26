@@ -1,6 +1,6 @@
 """Gateway HTTP + WebSocket server（Phase 12 - GatewayServer）。
 
-⚠️ 本文件已瘦身。所有 REST 路由已迁到 :mod:`harness.platform.api.v1`，
+⚠️ 本文件已瘦身。所有 REST 路由已迁到 :mod:`harness.platform.api.controllers`，
 GatewayServer 只做两件事：
 
 1. :func:`build_app` —— 调 ``harness.app.create_app()`` 构造 FastAPI 实例，
