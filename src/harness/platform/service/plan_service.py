@@ -176,7 +176,10 @@ class PlanService:
             worker_specs=[
                 WorkerSpec(
                     name="worker",
-                    system_prompt="你是 harness 计划执行 Worker。按步骤目标完成任务并输出结论。",
+                    system_prompt=(
+                        "你是 harness 计划执行 Worker。按步骤目标完成任务并输出结论。"
+                        "优先直接作答，不要调用工具；只有任务明确要求读写文件或访问网络时才使用工具。"
+                    ),
                     tools_allowed=(),
                 )
             ],

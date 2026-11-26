@@ -112,6 +112,10 @@ class AgentService:
                 "done": result.get("done", 0),
                 "failed": result.get("failed", 0),
                 "wall_seconds": result.get("wall_seconds", 0),
+                "prompt_tokens": result.get("prompt_tokens", 0),
+                "completion_tokens": result.get("completion_tokens", 0),
+                "total_tokens": result.get("total_tokens", 0),
+                "cache_read_tokens": result.get("cache_read_tokens", 0),
             },
         }
 
@@ -128,12 +132,17 @@ class AgentService:
             tools=build_default_tools(),
             session_id=run_id,
         )
-        state = await agent.run_loop(goal)
+        state = await agent.run(goal)
+        model_error = (
+            state.stop_reason
+            if state.stop_reason and state.stop_reason.startswith("model_error")
+            else None
+        )
         return {
             "run_id": run_id,
-            "status": "success" if not getattr(state, "error", None) else "failed",
-            "output": getattr(state, "final_answer", None),
-            "metrics": getattr(state, "metrics", None),
+            "status": "failed" if model_error else "success",
+            "output": state.last_response_text or None,
+            "metrics": state.metrics,
         }
 
     # ------------------------------------------------------------------
