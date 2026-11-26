@@ -44,6 +44,9 @@ export interface MessagePart {
   name?: string;
   arguments?: Record<string, unknown>;
   content?: string;
+  /** tool_call 块：执行成功与否（undefined 表示仍在执行）。 */
+  ok?: boolean;
+  execution_time_ms?: number;
 }
 
 /** 单条会话消息。 */
@@ -81,4 +84,124 @@ export interface RunData {
   output: string | null;
   error?: string | null;
   metrics?: Record<string, number | string>;
+}
+
+/** SSE message_start 事件。 */
+export interface StreamStartData {
+  run_id: string;
+  message_id: string;
+  session_id: string;
+  seq: number;
+}
+
+/** SSE tool_call 事件中的单条工具调用。 */
+export interface StreamToolCall {
+  id?: string;
+  name?: string;
+  arguments?: Record<string, unknown>;
+  ok?: boolean;
+  output?: string | null;
+  error?: string | null;
+  execution_time_ms?: number;
+}
+
+/** SSE tool_call 事件：start=开始执行，end=执行完成。 */
+export interface StreamToolData {
+  status: "start" | "end";
+  calls?: StreamToolCall[];
+  results?: StreamToolCall[];
+}
+
+/** SSE message_end 事件。 */
+export interface StreamEndData {
+  status: "completed" | "cancelled" | "failed";
+  message: ChatMessage;
+  metrics?: Record<string, number>;
+  error?: string | null;
+}
+
+/** POST /agents/runs/{run_id}/cancel 响应。 */
+export interface StreamCancelData {
+  run_id: string;
+  status: string;
+}
+
+/** POST /sessions/{sid}/messages/{mid}/retry 响应。 */
+export interface MessageRetryData {
+  session_id: string;
+  message_id: string;
+  text: string;
+  removed_message_ids: string[];
+}
+
+/** POST /sessions/{sid}/messages/{mid}/branch 响应。 */
+export interface MessageBranchData {
+  session_id: string;
+  source_session_id: string;
+  source_message_id: string;
+  title: string;
+  message_count: number;
+}
+
+/** 审计日志筛选参数。 */
+export interface AuditQuery {
+  page?: number;
+  size?: number;
+  action?: string;
+  user_id?: string;
+  session_id?: string;
+  result?: string;
+  since?: string;
+  until?: string;
+}
+
+/** 单条审计日志（detail 为对象，created_at 为 ISO UTC）。 */
+export interface AuditLogItem {
+  id: number;
+  user_id: string;
+  session_id: string | null;
+  action: string;
+  target: string;
+  result: string;
+  detail: Record<string, unknown>;
+  created_at: string;
+}
+
+/** GET /api/v1/audit-logs 响应。 */
+export interface AuditLogListData {
+  items: AuditLogItem[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+/** 按状态类分组的请求数。 */
+export interface HttpStatusCounts {
+  ok: number;
+  redirect: number;
+  client_error: number;
+  server_error: number;
+}
+
+/** 最近一条失败请求。 */
+export interface RecentHttpError {
+  time: string;
+  method: string;
+  path: string;
+  status: number;
+  duration_ms: number;
+  request_id: string;
+}
+
+/** GET /api/v1/observability/metrics 响应。 */
+export interface MetricsSummary {
+  total_requests: number;
+  error_requests: number;
+  error_rate: number;
+  avg_ms: number;
+  p95_ms: number;
+  status_counts: HttpStatusCounts;
+  recent_errors: RecentHttpError[];
+  uptime_seconds: number;
+  prometheus_available: boolean;
 }

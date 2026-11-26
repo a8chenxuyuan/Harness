@@ -41,7 +41,17 @@ async def record_audit(
         detail: 附加详情，序列化后写入 detail 列。
     """
     try:
+        from harness.common.observability.context import (
+            DEFAULT_REQUEST_ID,
+            get_request_id,
+        )
         from harness.platform.repository.audit_repository import AuditRepository
+
+        # 把 request_id 带进 detail，审计记录可反查同一请求的全部日志
+        payload = dict(detail or {})
+        request_id = get_request_id()
+        if request_id and request_id != DEFAULT_REQUEST_ID:
+            payload.setdefault("request_id", request_id)
 
         await AuditRepository(session).log(
             tenant_id=tenant_id,
@@ -50,7 +60,7 @@ async def record_audit(
             target=target,
             result=result,
             session_id=session_id,
-            detail_json=json.dumps(detail or {}, ensure_ascii=False),
+            detail_json=json.dumps(payload, ensure_ascii=False),
         )
     except Exception:  # noqa: BLE001 — 审计失败绝不影响主流程
         log.warning("audit: 写入失败 action=%s tenant=%s", action, tenant_id, exc_info=True)

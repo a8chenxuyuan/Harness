@@ -44,11 +44,6 @@
 
         <div class="login-sep">或</div>
         <button class="btn ghost full" type="button" @click="tip('飞书登录待接入')">使用飞书账号登录</button>
-
-        <div class="demo-hint">
-          当前为 mock 模式，任意非空账号密码均可登录。<br />
-          默认连接真实后端；纯前端演示时把 <code>VITE_USE_MOCK</code> 设为 <code>true</code>。
-        </div>
       </form>
     </div>
   </div>
@@ -252,21 +247,6 @@ function tip(text: string): void {
   height: 1px;
   background: var(--line);
   flex: 1;
-}
-
-.demo-hint {
-  margin-top: 16px;
-  border: 1px dashed var(--line);
-  border-radius: 10px;
-  padding: 10px 12px;
-  color: var(--faint);
-  font-size: 11px;
-  line-height: 1.7;
-}
-
-.demo-hint code {
-  font-family: var(--mono);
-  color: var(--muted);
 }
 
 @media (max-width: 1080px) {

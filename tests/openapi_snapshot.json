@@ -351,6 +351,35 @@
         "title": "ApiResponse[AgentStatusResponse]",
         "type": "object"
       },
+      "ApiResponse_AuditLogListResponse_": {
+        "properties": {
+          "code": {
+            "default": 0,
+            "description": "业务码，0=成功",
+            "title": "Code",
+            "type": "integer"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuditLogListResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "业务数据"
+          },
+          "message": {
+            "default": "ok",
+            "description": "状态描述",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[AuditLogListResponse]",
+        "type": "object"
+      },
       "ApiResponse_LoginResponse_": {
         "properties": {
           "code": {
@@ -378,6 +407,35 @@
           }
         },
         "title": "ApiResponse[LoginResponse]",
+        "type": "object"
+      },
+      "ApiResponse_MessageBranchResponse_": {
+        "properties": {
+          "code": {
+            "default": 0,
+            "description": "业务码，0=成功",
+            "title": "Code",
+            "type": "integer"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MessageBranchResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "业务数据"
+          },
+          "message": {
+            "default": "ok",
+            "description": "状态描述",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[MessageBranchResponse]",
         "type": "object"
       },
       "ApiResponse_MessageListResponse_": {
@@ -436,6 +494,64 @@
           }
         },
         "title": "ApiResponse[MessageResponse]",
+        "type": "object"
+      },
+      "ApiResponse_MessageRetryResponse_": {
+        "properties": {
+          "code": {
+            "default": 0,
+            "description": "业务码，0=成功",
+            "title": "Code",
+            "type": "integer"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MessageRetryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "业务数据"
+          },
+          "message": {
+            "default": "ok",
+            "description": "状态描述",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[MessageRetryResponse]",
+        "type": "object"
+      },
+      "ApiResponse_MetricsSummary_": {
+        "properties": {
+          "code": {
+            "default": 0,
+            "description": "业务码，0=成功",
+            "title": "Code",
+            "type": "integer"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricsSummary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "业务数据"
+          },
+          "message": {
+            "default": "ok",
+            "description": "状态描述",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[MetricsSummary]",
         "type": "object"
       },
       "ApiResponse_PlanListResponse_": {
@@ -732,6 +848,123 @@
         "title": "ApiResponse[dict[str, Any]]",
         "type": "object"
       },
+      "ApiResponse_list_str__": {
+        "properties": {
+          "code": {
+            "default": 0,
+            "description": "业务码，0=成功",
+            "title": "Code",
+            "type": "integer"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "业务数据",
+            "title": "Data"
+          },
+          "message": {
+            "default": "ok",
+            "description": "状态描述",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[list[str]]",
+        "type": "object"
+      },
+      "AuditLogItem": {
+        "description": "单条审计日志（detail 已解析为对象，时间统一 ISO-8601 UTC）。",
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "title": "Detail",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "result": {
+            "default": "success",
+            "title": "Result",
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "target": {
+            "default": "",
+            "title": "Target",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "action",
+          "created_at"
+        ],
+        "title": "AuditLogItem",
+        "type": "object"
+      },
+      "AuditLogListResponse": {
+        "description": "GET /api/v1/audit-logs 响应体。",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditLogItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "default": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "size": {
+            "default": 20,
+            "title": "Size",
+            "type": "integer"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "AuditLogListResponse",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -743,6 +976,33 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HttpStatusCounts": {
+        "description": "按状态类分组的请求数。",
+        "properties": {
+          "client_error": {
+            "default": 0,
+            "title": "Client Error",
+            "type": "integer"
+          },
+          "ok": {
+            "default": 0,
+            "title": "Ok",
+            "type": "integer"
+          },
+          "redirect": {
+            "default": 0,
+            "title": "Redirect",
+            "type": "integer"
+          },
+          "server_error": {
+            "default": 0,
+            "title": "Server Error",
+            "type": "integer"
+          }
+        },
+        "title": "HttpStatusCounts",
         "type": "object"
       },
       "LoginRequest": {
@@ -802,6 +1062,40 @@
         "title": "LoginResponse",
         "type": "object"
       },
+      "MessageBranchResponse": {
+        "description": "POST /messages/{id}/branch 响应体：新会话摘要与来源。",
+        "properties": {
+          "message_count": {
+            "default": 0,
+            "title": "Message Count",
+            "type": "integer"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "source_message_id": {
+            "title": "Source Message Id",
+            "type": "string"
+          },
+          "source_session_id": {
+            "title": "Source Session Id",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "source_session_id",
+          "source_message_id"
+        ],
+        "title": "MessageBranchResponse",
+        "type": "object"
+      },
       "MessageCreateRequest": {
         "description": "POST /api/v1/sessions/{session_id}/messages 请求体。",
         "properties": {
@@ -835,7 +1129,7 @@
           },
           "status": {
             "default": "completed",
-            "pattern": "^(streaming|completed|failed)$",
+            "pattern": "^(streaming|completed|failed|cancelled)$",
             "title": "Status",
             "type": "string"
           },
@@ -942,6 +1236,89 @@
           "role"
         ],
         "title": "MessageResponse",
+        "type": "object"
+      },
+      "MessageRetryResponse": {
+        "description": "POST /messages/{id}/retry 响应体：返回原文与已软删的消息。",
+        "properties": {
+          "message_id": {
+            "title": "Message Id",
+            "type": "string"
+          },
+          "removed_message_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Removed Message Ids",
+            "type": "array"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "text": {
+            "default": "",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "message_id"
+        ],
+        "title": "MessageRetryResponse",
+        "type": "object"
+      },
+      "MetricsSummary": {
+        "description": "GET /api/v1/observability/metrics 响应体。",
+        "properties": {
+          "avg_ms": {
+            "default": 0.0,
+            "title": "Avg Ms",
+            "type": "number"
+          },
+          "error_rate": {
+            "default": 0.0,
+            "title": "Error Rate",
+            "type": "number"
+          },
+          "error_requests": {
+            "default": 0,
+            "title": "Error Requests",
+            "type": "integer"
+          },
+          "p95_ms": {
+            "default": 0.0,
+            "title": "P95 Ms",
+            "type": "number"
+          },
+          "prometheus_available": {
+            "default": false,
+            "title": "Prometheus Available",
+            "type": "boolean"
+          },
+          "recent_errors": {
+            "items": {
+              "$ref": "#/components/schemas/RecentHttpError"
+            },
+            "title": "Recent Errors",
+            "type": "array"
+          },
+          "status_counts": {
+            "$ref": "#/components/schemas/HttpStatusCounts"
+          },
+          "total_requests": {
+            "default": 0,
+            "title": "Total Requests",
+            "type": "integer"
+          },
+          "uptime_seconds": {
+            "default": 0.0,
+            "title": "Uptime Seconds",
+            "type": "number"
+          }
+        },
+        "title": "MetricsSummary",
         "type": "object"
       },
       "PlanListResponse": {
@@ -1084,6 +1461,45 @@
           "goal"
         ],
         "title": "PlanSummary",
+        "type": "object"
+      },
+      "RecentHttpError": {
+        "description": "最近一条失败请求（4xx / 5xx）。",
+        "properties": {
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "number"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "integer"
+          },
+          "time": {
+            "title": "Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "time",
+          "method",
+          "path",
+          "status",
+          "duration_ms",
+          "request_id"
+        ],
+        "title": "RecentHttpError",
         "type": "object"
       },
       "RefreshRequest": {
@@ -1633,6 +2049,125 @@
         ]
       }
     },
+    "/api/v1/agents/run/stream": {
+      "post": {
+        "description": "流式运行单 Agent，按 SSE 推送增量事件。",
+        "operationId": "run_agent_stream_api_v1_agents_run_stream_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Agent Stream",
+        "tags": [
+          "v1",
+          "agents"
+        ]
+      }
+    },
+    "/api/v1/agents/runs/{run_id}/cancel": {
+      "post": {
+        "description": "请求取消流式运行。\n\n活跃流返回 ``cancelling``（由 SSE 流在下一个事件前收尾）；\n无活跃流（重启 / 已断线）时直接落 ``cancelled`` 并清理残留 streaming 消息。",
+        "operationId": "cancel_stream_run_api_v1_agents_runs__run_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_AgentCancelResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Stream Run",
+        "tags": [
+          "v1",
+          "agents"
+        ]
+      }
+    },
     "/api/v1/agents/{agent_id}/cancel": {
       "post": {
         "description": "请求取消后台运行；已结束或不存在时回落到 plans 表状态。",
@@ -1859,6 +2394,95 @@
             }
           },
           {
+            "in": "query",
+            "name": "user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 36,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "result",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 16,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Result"
+            }
+          },
+          {
+            "description": "起始时间（ISO-8601）",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "起始时间（ISO-8601）",
+              "title": "Since"
+            }
+          },
+          {
+            "description": "结束时间（ISO-8601）",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "结束时间（ISO-8601）",
+              "title": "Until"
+            }
+          },
+          {
             "in": "header",
             "name": "authorization",
             "required": false,
@@ -1880,7 +2504,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_dict_str__Any__"
+                  "$ref": "#/components/schemas/ApiResponse_AuditLogListResponse_"
                 }
               }
             },
@@ -1898,6 +2522,208 @@
           }
         },
         "summary": "List Audit Logs",
+        "tags": [
+          "v1",
+          "observability"
+        ]
+      }
+    },
+    "/api/v1/audit-logs/actions": {
+      "get": {
+        "description": "本租户出现过的审计动作标识（用于筛选下拉）。",
+        "operationId": "list_audit_actions_api_v1_audit_logs_actions_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_str__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Audit Actions",
+        "tags": [
+          "v1",
+          "observability"
+        ]
+      }
+    },
+    "/api/v1/audit-logs/export": {
+      "get": {
+        "description": "按过滤条件导出审计日志 CSV（最多 5000 行，UTF-8 BOM）。",
+        "operationId": "export_audit_logs_api_v1_audit_logs_export_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "in": "query",
+            "name": "user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 36,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "result",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 16,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Result"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Until"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Audit Logs",
         "tags": [
           "v1",
           "observability"
@@ -2389,6 +3215,57 @@
         ]
       }
     },
+    "/api/v1/observability/metrics": {
+      "get": {
+        "description": "HTTP 指标摘要：请求量、错误率、延迟分位与最近错误。",
+        "operationId": "metrics_summary_api_v1_observability_metrics_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_MetricsSummary_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Metrics Summary",
+        "tags": [
+          "v1",
+          "observability"
+        ]
+      }
+    },
     "/api/v1/plans": {
       "get": {
         "description": "分页列出当前租户的计划（创建时间倒序）。",
@@ -2728,7 +3605,7 @@
     },
     "/api/v1/sessions": {
       "get": {
-        "description": "分页列出当前用户的会话（创建时间倒序）。",
+        "description": "分页列出当前用户的会话（创建时间倒序），支持状态过滤。",
         "operationId": "list_sessions_api_v1_sessions_get",
         "parameters": [
           {
@@ -2752,6 +3629,25 @@
               "minimum": 1,
               "title": "Size",
               "type": "integer"
+            }
+          },
+          {
+            "description": "按状态过滤；不传或 all 表示全部",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(active|archived|all)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "按状态过滤；不传或 all 表示全部",
+              "title": "Status"
             }
           },
           {
@@ -2977,6 +3873,66 @@
         ]
       }
     },
+    "/api/v1/sessions/{session_id}/archive": {
+      "post": {
+        "description": "归档会话（从默认工作列表移出，消息保留）。",
+        "operationId": "archive_session_api_v1_sessions__session_id__archive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_SessionResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Archive Session",
+        "tags": [
+          "v1",
+          "sessions"
+        ]
+      }
+    },
     "/api/v1/sessions/{session_id}/messages": {
       "get": {
         "description": "按 seq 游标分页读取会话消息（升序）。",
@@ -3127,6 +4083,204 @@
         "tags": [
           "v1",
           "messages"
+        ]
+      }
+    },
+    "/api/v1/sessions/{session_id}/messages/{message_id}/branch": {
+      "post": {
+        "description": "以指定消息为分界复制历史到新会话。",
+        "operationId": "branch_message_api_v1_sessions__session_id__messages__message_id__branch_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "title": "Message Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_MessageBranchResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Branch Message",
+        "tags": [
+          "v1",
+          "messages"
+        ]
+      }
+    },
+    "/api/v1/sessions/{session_id}/messages/{message_id}/retry": {
+      "post": {
+        "description": "重试失败 / 取消的助手消息：软删旧问答并返回用户原文。",
+        "operationId": "retry_message_api_v1_sessions__session_id__messages__message_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "title": "Message Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_MessageRetryResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Message",
+        "tags": [
+          "v1",
+          "messages"
+        ]
+      }
+    },
+    "/api/v1/sessions/{session_id}/unarchive": {
+      "post": {
+        "description": "恢复已归档会话。",
+        "operationId": "unarchive_session_api_v1_sessions__session_id__unarchive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_SessionResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unarchive Session",
+        "tags": [
+          "v1",
+          "sessions"
         ]
       }
     },

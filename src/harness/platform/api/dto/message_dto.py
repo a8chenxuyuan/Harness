@@ -24,7 +24,7 @@ class MessageCreateRequest(BaseModel):
     )
     parent_id: str | None = Field(default=None, description="分支来源消息 id")
     status: str = Field(
-        default="completed", pattern="^(streaming|completed|failed)$"
+        default="completed", pattern="^(streaming|completed|failed|cancelled)$"
     )
 
 

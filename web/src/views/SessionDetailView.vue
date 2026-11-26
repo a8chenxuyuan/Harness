@@ -21,31 +21,59 @@
           </div>
 
           <div
-            v-for="message in messages"
+            v-for="message in visibleMessages"
             :key="message.id"
             class="msg"
             :class="message.role"
           >
             <div class="msg-meta">
               <span class="who">{{ roleLabel(message.role) }}</span>
-              <span class="mono faint">#{{ message.seq }}</span>
+              <span v-if="message.status === 'failed'" class="msg-status failed">生成失败</span>
+              <span v-else-if="message.status === 'cancelled'" class="msg-status cancelled">已取消</span>
+              <span class="mono faint">
+                {{ message.seq > 0 ? `#${message.seq}` : "流式" }}
+              </span>
             </div>
             <div class="bubble">
               <template v-if="message.parts.length">
                 <template v-for="(part, index) in message.parts" :key="index">
                   <p v-if="part.type === 'text'" class="part-text">{{ part.text }}</p>
+                  <div
+                    v-else-if="part.type === 'tool_call'"
+                    class="tool-call"
+                    :class="{ failed: part.ok === false }"
+                  >
+                    <div class="tool-head">
+                      <span class="tool-name mono">工具 · {{ part.name }}</span>
+                      <span class="tool-state">
+                        {{ part.ok === undefined ? "运行中…" : part.ok ? "完成" : "失败" }}
+                      </span>
+                    </div>
+                    <pre v-if="hasArgs(part)" class="tool-args mono">{{ prettyArgs(part) }}</pre>
+                    <pre v-if="part.content" class="tool-output mono">{{ part.content }}</pre>
+                  </div>
                   <p v-else class="part-mono mono">
                     [{{ part.type }}] {{ part.name ?? "" }}{{ part.content ? ` · ${part.content}` : "" }}
                   </p>
                 </template>
+                <span v-if="message.status === 'streaming'" class="caret"></span>
               </template>
-              <p v-else class="part-text">{{ message.text }}</p>
+              <p v-else class="part-text">
+                {{ message.text || (message.status === "streaming" ? "正在生成…" : "") }}
+              </p>
+            </div>
+            <div v-if="canAct(message)" class="msg-actions">
+              <button class="btn ghost mini" :disabled="acting" @click="retry(message)">
+                重试
+              </button>
+              <button class="btn ghost mini" :disabled="acting" @click="branch(message)">
+                分支
+              </button>
             </div>
           </div>
 
-          <div v-if="sending" class="msg assistant">
-            <div class="msg-meta"><span class="who">助手</span><span class="mono faint">运行中…</span></div>
-            <div class="bubble typing">正在运行 Agent…</div>
+          <div v-if="streamError" class="stream-error">
+            流式运行失败：{{ streamError }}
           </div>
         </div>
 
@@ -60,9 +88,19 @@
           ></textarea>
           <div class="composer-actions">
             <span class="faint">{{ messages.length }} 条消息</span>
-            <button class="btn primary" :disabled="sending || !draft.trim()" @click="send">
-              {{ sending ? "运行中…" : "发送" }}
-            </button>
+            <div class="composer-buttons">
+              <button
+                v-if="sending"
+                class="btn ghost mini"
+                :disabled="stopping"
+                @click="stopStream"
+              >
+                {{ stopping ? "停止中…" : "停止" }}
+              </button>
+              <button class="btn primary" :disabled="sending || !draft.trim()" @click="send">
+                {{ sending ? "运行中…" : "发送" }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -80,7 +118,7 @@
         </div>
         <div class="panel mini">
           <h4>说明</h4>
-          <p>发送消息会调用 POST /agents/run，由后端统一落 user / assistant 两条消息。</p>
+          <p>发送消息会调用 POST /agents/run/stream，后端流式生成并增量落 user / assistant 两条消息。</p>
         </div>
       </div>
     </div>
@@ -88,29 +126,45 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
-import { listMessages, sendMessage } from "@/api/messages";
+import { branchMessage, listMessages, retryMessage } from "@/api/messages";
 import { getSession, removeSession } from "@/api/sessions";
-import type { ChatMessage, SessionDetail } from "@/api/types";
+import type { ChatMessage, MessagePart, SessionDetail } from "@/api/types";
 import PageHeader from "@/components/PageHeader.vue";
+import { useChatStream } from "@/composables/useChatStream";
 import { pushToast } from "@/composables/toast";
 
 const route = useRoute();
 const router = useRouter();
 const loading = ref(true);
 const error = ref("");
+const acting = ref(false);
 const session = ref<SessionDetail | null>(null);
 const messages = ref<ChatMessage[]>([]);
 const draft = ref("");
-const sending = ref(false);
 const listRef = ref<HTMLElement | null>(null);
+
+const {
+  active: sending,
+  error: streamError,
+  message: streamingMessage,
+  stopping,
+  stop: stopStream,
+  send: sendStream,
+} = useChatStream(sessionId);
 
 const subtitle = computed(() =>
   session.value
     ? `${session.value.session_id} · ${session.value.status} · ${session.value.message_count} 条消息`
     : "",
+);
+
+const visibleMessages = computed(() =>
+  streamingMessage.value
+    ? [...messages.value, streamingMessage.value]
+    : messages.value,
 );
 
 function sessionId(): string {
@@ -145,25 +199,88 @@ async function reloadMessages(): Promise<void> {
   await scrollToBottom();
 }
 
-/** 发送消息：后端运行 Agent 并落 user / assistant 消息。 */
+/** 发送消息：SSE 流式渲染，结束后以服务端消息列表为准刷新。 */
 async function send(): Promise<void> {
   const text = draft.value.trim();
   if (!text || sending.value) return;
+  draft.value = "";
+  await submit(text);
+}
 
-  sending.value = true;
+/** 用指定文本发起一次流式发送（发送与重试共用）。 */
+async function submit(text: string): Promise<void> {
+  if (!text.trim() || sending.value) return;
+
+  await sendStream(text, {
+    onUserMessage: (content) => {
+      // 乐观回显用户消息，避免等待元数据期间输入内容消失
+      messages.value = [
+        ...messages.value,
+        {
+          id: `local-${Date.now()}`,
+          session_id: sessionId(),
+          role: "user",
+          parts: [{ type: "text", text: content }],
+          text: content,
+          seq: messages.value.length + 1,
+          parent_id: null,
+          status: "completed",
+          created_at: new Date().toISOString(),
+        },
+      ];
+      void scrollToBottom();
+    },
+    onProgress: () => void scrollToBottom(),
+    onSettled: reloadMessages,
+    onError: (reason) => pushToast(reason),
+  });
+}
+
+/** 失败 / 取消的助手消息可重试或派生分支。 */
+function canAct(message: ChatMessage): boolean {
+  return (
+    message.role === "assistant" &&
+    (message.status === "failed" || message.status === "cancelled") &&
+    !sending.value
+  );
+}
+
+/** 重试：后端软删旧问答并返回原文，前端重新走 SSE。 */
+async function retry(message: ChatMessage): Promise<void> {
+  if (sending.value || acting.value) return;
+  acting.value = true;
   try {
-    const result = await sendMessage(sessionId(), text);
-    draft.value = "";
-    if (result.status !== "success" && result.status !== "completed") {
-      const reason = typeof result.metrics?.error === "string" ? result.metrics.error : "运行失败";
-      pushToast(reason);
-    }
+    const data = await retryMessage(sessionId(), message.id);
     await reloadMessages();
+    await submit(data.text);
   } catch (err) {
-    pushToast(err instanceof Error ? err.message : "发送失败");
+    pushToast(err instanceof Error ? err.message : "重试失败");
   } finally {
-    sending.value = false;
+    acting.value = false;
   }
+}
+
+/** 分支：复制历史到新会话并跳转。 */
+async function branch(message: ChatMessage): Promise<void> {
+  if (sending.value || acting.value) return;
+  acting.value = true;
+  try {
+    const data = await branchMessage(sessionId(), message.id);
+    pushToast(`已创建分支会话（${data.message_count} 条消息）`);
+    await router.push(`/sessions/${data.session_id}`);
+  } catch (err) {
+    pushToast(err instanceof Error ? err.message : "分支失败");
+  } finally {
+    acting.value = false;
+  }
+}
+
+function hasArgs(part: MessagePart): boolean {
+  return !!part.arguments && Object.keys(part.arguments).length > 0;
+}
+
+function prettyArgs(part: MessagePart): string {
+  return JSON.stringify(part.arguments ?? {}, null, 2);
 }
 
 async function remove(): Promise<void> {
@@ -197,137 +314,14 @@ function formatTime(value?: string): string {
 }
 
 onMounted(reload);
+
+// 分支会跳转到同一路由的新会话，组件被复用，需要按 id 变化重新拉取
+watch(
+  () => route.params.id,
+  (next, previous) => {
+    if (next && next !== previous) void reload();
+  },
+);
 </script>
 
-<style scoped>
-.loading {
-  padding: 40px;
-  text-align: center;
-  color: var(--faint);
-}
-
-.chat {
-  display: flex;
-  flex-direction: column;
-  min-height: 520px;
-}
-
-.chat-body {
-  flex: 1;
-  max-height: 560px;
-  overflow-y: auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.msg {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  max-width: 86%;
-}
-
-.msg.user {
-  align-self: flex-end;
-  align-items: flex-end;
-}
-
-.msg-meta {
-  display: flex;
-  gap: 7px;
-  align-items: baseline;
-  font-size: 11px;
-  color: var(--faint);
-}
-
-.msg-meta .who {
-  color: var(--muted);
-  font-weight: 550;
-}
-
-.bubble {
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 10px 13px;
-  font-size: 12.5px;
-  line-height: 1.7;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.msg.user .bubble {
-  background: rgba(99, 102, 241, 0.14);
-  border-color: rgba(99, 102, 241, 0.32);
-}
-
-.part-text {
-  margin: 0;
-}
-
-.part-text + .part-text {
-  margin-top: 8px;
-}
-
-.part-mono {
-  margin: 6px 0 0;
-  font-size: 11.5px;
-  color: var(--muted);
-}
-
-.typing {
-  color: var(--muted);
-}
-
-.composer {
-  border-top: 1px solid var(--line-soft);
-  padding: 12px 16px;
-}
-
-.composer textarea {
-  width: 100%;
-  resize: vertical;
-  min-height: 68px;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  color: var(--text);
-  padding: 10px 12px;
-  font-family: inherit;
-  font-size: 12.5px;
-  line-height: 1.6;
-  outline: none;
-}
-
-.composer textarea:focus {
-  border-color: rgba(99, 102, 241, 0.6);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
-}
-
-.composer-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 9px;
-  font-size: 11px;
-}
-
-.mini {
-  padding: 14px 16px;
-}
-
-.mini h4 {
-  margin: 0 0 3px;
-  font-size: 12px;
-  font-weight: 580;
-}
-
-.mini p {
-  margin: 0;
-  color: var(--faint);
-  font-size: 11.5px;
-  line-height: 1.7;
-}
-</style>
+<style scoped src="./SessionDetailView.css"></style>

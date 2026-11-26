@@ -49,14 +49,17 @@ def _ensure_initialized() -> None:
             context_class=dict,
         )
     else:
-        # structlog 没装时给标准 logging 加一个简单 handler
+        # structlog 没装时给标准 logging 加一个简单 handler（带 request_id）
+        from harness.common.observability.context import RequestIdFilter
+
         root = logging.getLogger()
         if not root.handlers:
             handler = logging.StreamHandler(sys.stdout)
             fmt = logging.Formatter(
-                "%(asctime)s [%(levelname)s] %(name)s %(message)s"
+                "%(asctime)s [%(levelname)s] [rid=%(request_id)s] %(name)s %(message)s"
             )
             handler.setFormatter(fmt)
+            handler.addFilter(RequestIdFilter())
             root.addHandler(handler)
             root.setLevel(logging.INFO)
 

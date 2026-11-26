@@ -73,3 +73,83 @@ class SessionMessageRepository(BaseRepository):
             return 0
         value = rows[0]
         return int(value) if isinstance(value, (int, float)) else int(value[0])
+
+    async def get_in_session(
+        self, tenant_id: str, session_id: str, message_id: str
+    ):
+        """按消息 id + 会话 + 租户查询（未软删）。"""
+        from sqlmodel import select
+        Record = self.model
+        result = await self.session.exec(
+            select(Record).where(
+                Record.id == message_id,
+                Record.session_id == session_id,
+                Record.tenant_id == tenant_id,
+                Record.deleted_at.is_(None),  # type: ignore[union-attr]
+            )
+        )
+        return result.first()
+
+    async def has_after(self, tenant_id: str, session_id: str, after_seq: int) -> bool:
+        """会话内是否存在 seq 更大的未删消息。"""
+        from sqlalchemy import func, select
+        Record = self.model
+        result = await self.session.exec(
+            select(func.count()).select_from(Record).where(
+                Record.tenant_id == tenant_id,
+                Record.session_id == session_id,
+                Record.seq > after_seq,
+                Record.deleted_at.is_(None),  # type: ignore[union-attr]
+            )
+        )
+        rows = result.all()
+        if not rows:
+            return False
+        value = rows[0]
+        count = int(value) if isinstance(value, (int, float)) else int(value[0])
+        return count > 0
+
+    async def previous_user(self, tenant_id: str, session_id: str, before_seq: int):
+        """按 seq 倒序取目标之前最近的一条未删 user 消息。"""
+        from sqlmodel import select
+        Record = self.model
+        result = await self.session.exec(
+            select(Record).where(
+                Record.tenant_id == tenant_id,
+                Record.session_id == session_id,
+                Record.role == "user",
+                Record.seq < before_seq,
+                Record.deleted_at.is_(None),  # type: ignore[union-attr]
+            ).order_by(Record.seq.desc()).limit(1)
+        )
+        return result.first()
+
+    async def list_up_to(
+        self, tenant_id: str, session_id: str, max_seq: int, *, limit: int = 500
+    ):
+        """按 seq 升序取 ``seq <= max_seq`` 的未删消息（分支复制用）。"""
+        from sqlmodel import select
+        Record = self.model
+        result = await self.session.exec(
+            select(Record).where(
+                Record.tenant_id == tenant_id,
+                Record.session_id == session_id,
+                Record.seq <= max_seq,
+                Record.deleted_at.is_(None),  # type: ignore[union-attr]
+            ).order_by(Record.seq).limit(limit)
+        )
+        return list(result.all())
+
+    async def list_streaming(self, tenant_id: str, session_id: str):
+        """会话内仍处于 streaming 的消息（取消兜底收尾用）。"""
+        from sqlmodel import select
+        Record = self.model
+        result = await self.session.exec(
+            select(Record).where(
+                Record.tenant_id == tenant_id,
+                Record.session_id == session_id,
+                Record.status == "streaming",
+                Record.deleted_at.is_(None),  # type: ignore[union-attr]
+            )
+        )
+        return list(result.all())

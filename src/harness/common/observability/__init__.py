@@ -7,8 +7,11 @@
 from .logging import get_logger
 from .metrics import (
     expose_dict,
+    expose_prometheus,
+    metrics_snapshot,
     record_cache_hit,
     record_compaction,
+    record_http_request,
     record_loop_iteration,
     record_resume_replay,
     record_tool_duration,
@@ -21,8 +24,11 @@ __all__ = [
     "get_logger",
     # metrics
     "expose_dict",
+    "expose_prometheus",
+    "metrics_snapshot",
     "record_cache_hit",
     "record_compaction",
+    "record_http_request",
     "record_loop_iteration",
     "record_resume_replay",
     "record_tool_duration",

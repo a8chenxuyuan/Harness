@@ -24,8 +24,6 @@ from harness.core.loop.streaming import (
     EVENT_TOOL_GROUP_START,
     LoopStreamEvent,
     _execute_tool_safely,
-    _new_tool_call_fragments,
-    _new_tool_call_meta,
 )
 
 if TYPE_CHECKING:
@@ -135,8 +133,8 @@ async def execute_with_overlap(
     budget = budget or ToolBudget()
     sem = asyncio.Semaphore(concurrency)
 
-    tool_json_fragments = _new_tool_call_fragments()
-    tool_call_meta = _new_tool_call_meta()
+    tool_json_fragments: dict[int, list[str]] = {}
+    tool_call_meta: dict[int, ToolCall] = {}
     # 完整收集到的 tool_calls（finish_reason 到来后 flush）
     complete_calls: list[ToolCall] = []
 

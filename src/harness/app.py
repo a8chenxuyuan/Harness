@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 
 log = logging.getLogger(__name__)
 
@@ -60,9 +60,24 @@ def create_app() -> FastAPI:
     except Exception:  # noqa: BLE001
         pass
 
+    # ========== 请求上下文（request_id + 指标 + 访问日志） ==========
+    from harness.platform.api.middleware import RequestContextMiddleware
+
+    app.add_middleware(RequestContextMiddleware)
+
     # ========== 统一异常处理 ==========
     from harness.platform.api.exceptions import register_exception_handlers
     register_exception_handlers(app)
+
+    # ========== Prometheus 抓取端点（不走 /api/v1，通常由内网采集） ==========
+    @app.get("/metrics", include_in_schema=False)
+    async def prometheus_metrics() -> Response:
+        from harness.common.observability.metrics import expose_prometheus
+
+        return Response(
+            content=expose_prometheus(),
+            media_type="text/plain; version=0.0.4; charset=utf-8",
+        )
 
     # ========== API v1 ==========
     from harness.platform.api.v1 import api_v1
