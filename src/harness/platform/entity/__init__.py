@@ -15,6 +15,7 @@ from harness.platform.entity.audit_log import AuditLog
 from harness.platform.entity.idempotency_key import IdempotencyRecord
 from harness.platform.entity.memory import MemoryEntry
 from harness.platform.entity.plan import PlanRecord
+from harness.platform.entity.refresh_token import RefreshToken
 from harness.platform.entity.session import SessionRecord
 from harness.platform.entity.session_message import SessionMessage
 from harness.platform.entity.tenant import Tenant
@@ -33,4 +34,5 @@ __all__ = [
     "IdempotencyRecord",
     "TenantQuota",
     "TenantUsageDaily",
+    "RefreshToken",
 ]

@@ -1062,6 +1062,25 @@
         "title": "LoginResponse",
         "type": "object"
       },
+      "LogoutRequest": {
+        "description": "POST /api/v1/auth/logout 请求体（可选：传了才吊销 refresh token）。",
+        "properties": {
+          "refresh_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "要吊销的 refresh token",
+            "title": "Refresh Token"
+          }
+        },
+        "title": "LogoutRequest",
+        "type": "object"
+      },
       "MessageBranchResponse": {
         "description": "POST /messages/{id}/branch 响应体：新会话摘要与来源。",
         "properties": {
@@ -2857,7 +2876,7 @@
     },
     "/api/v1/auth/logout": {
       "post": {
-        "description": "登出。无 Redis 黑名单时只写审计并返回成功（token 由客户端丢弃）。",
+        "description": "登出：吊销传入的 refresh token（不传则只写审计）。",
         "operationId": "logout_api_v1_auth_logout_post",
         "parameters": [
           {
@@ -2877,6 +2896,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/LogoutRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Req"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {

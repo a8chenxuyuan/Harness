@@ -33,4 +33,10 @@ class RegisterRequest(BaseModel):
     tenant_name: str | None = Field(default=None, description="新建租户名（不传则加入默认租户）")
 
 
-__all__ = ["LoginRequest", "RefreshRequest", "RegisterRequest"]
+class LogoutRequest(BaseModel):
+    """POST /api/v1/auth/logout 请求体（可选：传了才吊销 refresh token）。"""
+
+    refresh_token: str | None = Field(default=None, description="要吊销的 refresh token")
+
+
+__all__ = ["LoginRequest", "LogoutRequest", "RefreshRequest", "RegisterRequest"]
