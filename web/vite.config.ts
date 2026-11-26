@@ -18,6 +18,11 @@ export default defineConfig({
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
       },
+      // Prometheus 抓取端点在根路径，供可观测页跳转
+      "/metrics": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
     },
   },
 });

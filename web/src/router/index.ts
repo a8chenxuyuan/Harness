@@ -47,6 +47,12 @@ const router = createRouter({
           component: () => import("@/views/AuditLogView.vue"),
           meta: { title: "审计日志" },
         },
+        {
+          path: "observability",
+          name: "observability",
+          component: () => import("@/views/ObservabilityView.vue"),
+          meta: { title: "可观测" },
+        },
       ],
     },
     { path: "/:pathMatch(.*)*", redirect: "/" },

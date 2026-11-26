@@ -174,3 +174,34 @@ export interface AuditLogListData {
   page: number;
   size: number;
 }
+
+/** 按状态类分组的请求数。 */
+export interface HttpStatusCounts {
+  ok: number;
+  redirect: number;
+  client_error: number;
+  server_error: number;
+}
+
+/** 最近一条失败请求。 */
+export interface RecentHttpError {
+  time: string;
+  method: string;
+  path: string;
+  status: number;
+  duration_ms: number;
+  request_id: string;
+}
+
+/** GET /api/v1/observability/metrics 响应。 */
+export interface MetricsSummary {
+  total_requests: number;
+  error_requests: number;
+  error_rate: number;
+  avg_ms: number;
+  p95_ms: number;
+  status_counts: HttpStatusCounts;
+  recent_errors: RecentHttpError[];
+  uptime_seconds: number;
+  prometheus_available: boolean;
+}

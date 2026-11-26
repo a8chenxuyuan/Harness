@@ -40,7 +40,14 @@
       >
         <span class="ico">▤</span>审计日志
       </RouterLink>
-      <div class="nav-item" @click="notReady('可观测')"><span class="ico">◎</span>可观测</div>
+      <RouterLink
+        v-if="canAudit"
+        class="nav-item"
+        :class="{ active: isActive('observability') }"
+        to="/observability"
+      >
+        <span class="ico">◎</span>可观测
+      </RouterLink>
       <div class="nav-item" @click="notReady('设置')"><span class="ico">⚙</span>设置</div>
 
       <div class="side-foot">
