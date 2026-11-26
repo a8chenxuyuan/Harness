@@ -205,3 +205,90 @@ export interface MetricsSummary {
   uptime_seconds: number;
   prometheus_available: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Skill 管理（W4-01）
+// ---------------------------------------------------------------------------
+
+/** 单个 Skill 的展示项。 */
+export interface SkillItem {
+  name: string;
+  description: string;
+  version: string;
+  triggers: string[];
+  tools: string[];
+  custom_message: string;
+  /** 来源层：runtime / user / project / bundled */
+  source: string;
+  metadata: Record<string, unknown>;
+}
+
+/** GET /api/v1/skills 响应。 */
+export interface SkillListData {
+  items: SkillItem[];
+  total: number;
+}
+
+/** POST /api/v1/skills 请求体。 */
+export interface SkillRegisterBody {
+  name: string;
+  description?: string;
+  version?: string;
+  triggers?: string[];
+  tools?: string[];
+  custom_message?: string;
+  metadata?: Record<string, unknown>;
+}
+
+/** POST /api/v1/skills/trigger-test 请求体。 */
+export interface SkillTriggerTestBody {
+  text: string;
+}
+
+/** POST /api/v1/skills/trigger-test 响应中单个命中项。 */
+export interface SkillTriggerMatch {
+  name: string;
+  matched_trigger: string;
+}
+
+/** POST /api/v1/skills/trigger-test 响应。 */
+export interface SkillTriggerTestData {
+  matched: SkillTriggerMatch[];
+  total_matches: number;
+}
+
+// ---------------------------------------------------------------------------
+// Memory 管理（W4-02）
+// ---------------------------------------------------------------------------
+
+/** 单条长期记忆。 */
+export interface MemoryItem {
+  item_id: string;
+  content: string;
+  session_id: string;
+  tags: string[];
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+/** GET /api/v1/memories 响应。 */
+export interface MemoryListData {
+  items: MemoryItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/** POST /api/v1/memories 请求体。 */
+export interface MemorySaveBody {
+  content: string;
+  session_id?: string | null;
+  tags?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+/** POST /api/v1/memories 响应。 */
+export interface MemorySaveData {
+  item_id: string;
+  created_at: string;
+}

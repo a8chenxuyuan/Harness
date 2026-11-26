@@ -53,6 +53,18 @@ const router = createRouter({
           component: () => import("@/views/ObservabilityView.vue"),
           meta: { title: "可观测" },
         },
+        {
+          path: "skills",
+          name: "skills",
+          component: () => import("@/views/SkillListView.vue"),
+          meta: { title: "Skill 管理" },
+        },
+        {
+          path: "memories",
+          name: "memories",
+          component: () => import("@/views/MemoryListView.vue"),
+          meta: { title: "长期记忆" },
+        },
       ],
     },
     { path: "/:pathMatch(.*)*", redirect: "/" },
