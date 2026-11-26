@@ -8,6 +8,8 @@ Skill 是 Agent 的"人格/专家视角包"——命中触发词时追加 custom
     GET    /skills                 列出当前运行时加载的全部 Skill
     GET    /skills/{name}          查单个 Skill 详情
     POST   /skills                 注册一个新 Skill（运行时层，同名覆盖）
+    PATCH  /skills/{name}          启用/禁用一个 Skill（任意来源层，内存态）
+    GET    /skills/{name}/versions 查历史版本（内存态，仅记录被覆盖注册的旧版本）
     DELETE /skills/{name}          注销运行时 Skill（低层 Skill 不允许 API 删）
     POST   /skills/trigger-test    传一段文本，返回命中的 Skill 列表（仅匹配不激活）
 """
@@ -17,7 +19,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from harness.platform.api.deps import get_current_user
-from harness.platform.api.dto.skill_dto import SkillRegisterRequest, SkillTriggerTestRequest
+from harness.platform.api.dto.skill_dto import (
+    SkillPatchRequest,
+    SkillRegisterRequest,
+    SkillTriggerTestRequest,
+)
 from harness.platform.api.exceptions import BizError
 from harness.platform.api.vo.auth_vo import UserInfo
 from harness.platform.api.vo.envelope_vo import ApiResponse
@@ -26,9 +32,12 @@ from harness.platform.api.vo.skill_vo import (
     SkillDetailResponse,
     SkillItem,
     SkillListResponse,
+    SkillPatchResponse,
     SkillRegisterResponse,
     SkillTriggerMatch,
     SkillTriggerTestResponse,
+    SkillVersionItem,
+    SkillVersionsResponse,
 )
 from harness.platform.service import skill_service as skills
 
@@ -110,6 +119,57 @@ async def register_skill(
         "data": SkillRegisterResponse(
             skill=SkillItem(**item_dict),
             replaced=replaced,
+        ),
+    }
+
+
+# ---------------------------------------------------------------------------
+# PATCH /skills/{name} —— 启用/禁用
+# ---------------------------------------------------------------------------
+
+@router.patch("/{name}", response_model=ApiResponse[SkillPatchResponse])
+async def patch_skill(
+    name: str,
+    body: SkillPatchRequest,
+    user: UserInfo = Depends(get_current_user),
+) -> dict:
+    """启用/禁用一个 Skill。
+
+    任意来源层（runtime/user/project/bundled）均可操作，状态为进程内
+    内存态：禁用后 SkillTrigger 不再命中、SkillActivator 不会激活，
+    但 Skill 定义保留；重新启用立即恢复，无需重新注册。
+
+    - 找不到 → BizError(404)
+    """
+    item = await skills.patch_skill(name, enabled=body.enabled)
+    if item is None:
+        raise BizError(status.HTTP_404_NOT_FOUND, f"skill {name} not found")
+    return {
+        "code": 0,
+        "message": "ok",
+        "data": SkillPatchResponse(skill=SkillItem(**item)),
+    }
+
+
+# ---------------------------------------------------------------------------
+# GET /skills/{name}/versions —— 历史版本
+# ---------------------------------------------------------------------------
+
+@router.get("/{name}/versions", response_model=ApiResponse[SkillVersionsResponse])
+async def list_skill_versions(name: str, user: UserInfo = Depends(get_current_user)) -> dict:
+    """查一个 Skill 的历史版本（内存态）。
+
+    只记录 API 覆盖注册时被替换的旧版本，新版本在前；
+    当前生效版本不含在内。进程重启后历史清空。
+    Skill 不存在时返回空列表（不报 404，与详情接口的宽松风格一致）。
+    """
+    items = await skills.list_skill_versions(name)
+    return {
+        "code": 0,
+        "message": "ok",
+        "data": SkillVersionsResponse(
+            items=[SkillVersionItem(**i) for i in items],
+            total=len(items),
         ),
     }
 

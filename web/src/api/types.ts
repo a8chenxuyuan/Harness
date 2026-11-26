@@ -218,6 +218,8 @@ export interface SkillItem {
   triggers: string[];
   tools: string[];
   custom_message: string;
+  /** 是否启用；禁用后 SkillTrigger 不再命中 */
+  enabled: boolean;
   /** 来源层：runtime / user / project / bundled */
   source: string;
   metadata: Record<string, unknown>;
@@ -255,6 +257,25 @@ export interface SkillTriggerMatch {
 export interface SkillTriggerTestData {
   matched: SkillTriggerMatch[];
   total_matches: number;
+}
+
+/** PATCH /api/v1/skills/{name} 请求体。 */
+export interface SkillPatchBody {
+  enabled: boolean;
+}
+
+/** GET /api/v1/skills/{name}/versions 响应中的单个历史版本。 */
+export interface SkillVersionItem {
+  version: string;
+  description: string;
+  source: string;
+  replaced_at: string;
+}
+
+/** GET /api/v1/skills/{name}/versions 响应。 */
+export interface SkillVersionsData {
+  items: SkillVersionItem[];
+  total: number;
 }
 
 // ---------------------------------------------------------------------------

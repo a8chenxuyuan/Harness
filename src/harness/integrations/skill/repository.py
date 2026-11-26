@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 import os
 from pathlib import Path
@@ -67,6 +68,10 @@ class SkillRepository:
         # 运行时注入层：直接由 add_runtime 注册
         self._runtime_skills: dict[str, Skill] = {}
 
+        # 启用/禁用覆盖表：name → enabled。load_all 重建合并表后重新套用，
+        # 保证禁用状态在热加载后不丢（进程内内存态，不落盘）。
+        self._enabled_overrides: dict[str, bool] = {}
+
     # --- 加载 ------------------------------------------------------------------
 
     async def load_all(self) -> None:
@@ -91,6 +96,12 @@ class SkillRepository:
         # runtime 层已在内存里，直接覆盖
         for skill in self._runtime_skills.values():
             self._upsert(skill, LAYER_RUNTIME)
+
+        # 重新套用启用/禁用覆盖（load_all 重建了合并表，禁用状态要补回去）
+        for name, enabled in self._enabled_overrides.items():
+            skill = self._skills.get(name)
+            if skill is not None and skill.enabled != enabled:
+                self._skills[name] = dataclasses.replace(skill, enabled=enabled)
 
         log.info(
             "SkillRepository 加载完成：共 %d 个 skill（runtime=%d, user=%d, project=%d, bundled=%d）",
@@ -155,6 +166,36 @@ class SkillRepository:
             # 否则 get_by_name / list_all 仍能看到"已注销"的 skill
             self._skills.pop(name, None)
         return removed
+
+    # --- 启用 / 禁用 ------------------------------------------------------------
+
+    def set_enabled(self, name: str, enabled: bool) -> Skill | None:
+        """设置一个 Skill 的启用状态（进程内内存态）。
+
+        Skill 是 frozen dataclass，这里用 dataclasses.replace 生成新实例。
+        runtime 层的实例要同步更新 _runtime_skills，否则下次 load_all
+        会用旧实例覆盖回来。同时记录到 _enabled_overrides，
+        load_all 重建合并表后自动重新套用。
+
+        Args:
+            name: skill 名字。
+            enabled: True=启用，False=禁用。
+
+        Returns:
+            更新后的 Skill；名字不存在返回 None。
+        """
+        skill = self._skills.get(name)
+        if skill is None:
+            return None
+
+        new_skill = dataclasses.replace(skill, enabled=enabled)
+        self._skills[name] = new_skill
+        if name in self._runtime_skills:
+            self._runtime_skills[name] = new_skill
+        self._enabled_overrides[name] = enabled
+
+        log.info("SkillRepository.set_enabled: %s → %s", name, "enabled" if enabled else "disabled")
+        return new_skill
 
     # --- 查询 ------------------------------------------------------------------
 

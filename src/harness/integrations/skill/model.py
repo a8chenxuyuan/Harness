@@ -26,6 +26,8 @@ class Skill:
         system_prompt: **废弃字段**，保留兼容但不再使用；改它会让
             stable_prefix 失效。新版统一用 custom_message 追加到 history。
         custom_message: 激活时追加到 history 的特殊消息正文。
+        enabled: 是否启用。禁用后 SkillTrigger 不再命中它，
+            SkillActivator 也就不会激活；Skill 定义本身仍保留在仓库里。
         metadata: 任意扩展字段（作者、来源、标签等）。
     """
 
@@ -36,6 +38,7 @@ class Skill:
     tools: list[str] = field(default_factory=list)
     system_prompt: str = ""  # deprecated, kept for backward compat
     custom_message: str = ""
+    enabled: bool = True
     metadata: dict[str, Any] = field(default_factory=dict)
 
     # --- 工具方法 ---------------------------------------------------------------
@@ -49,6 +52,7 @@ class Skill:
             triggers=[*self.triggers, *extra],
             tools=self.tools,
             custom_message=self.custom_message,
+            enabled=self.enabled,
             metadata=self.metadata,
         )
 
@@ -61,6 +65,7 @@ class Skill:
             "triggers": list(self.triggers),
             "tools": list(self.tools),
             "custom_message": self.custom_message,
+            "enabled": self.enabled,
             "metadata": dict(self.metadata),
         }
 

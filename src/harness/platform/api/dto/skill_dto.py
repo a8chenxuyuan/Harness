@@ -43,6 +43,16 @@ class SkillRegisterRequest(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict, description="扩展字段（作者、标签等）")
 
 
+class SkillPatchRequest(BaseModel):
+    """PATCH /skills/{name} 请求体 —— 启用/禁用一个 Skill。
+
+    只支持 enabled 一个字段；禁用后 SkillTrigger 不再命中，
+    重新启用立即恢复，无需重新注册。
+    """
+
+    enabled: bool = Field(..., description="True=启用，False=禁用")
+
+
 class SkillTriggerTestRequest(BaseModel):
     """POST /skills/trigger-test 请求体 —— 测试 Skill 匹配效果。
 
@@ -53,4 +63,4 @@ class SkillTriggerTestRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=4000, description="要测试的输入文本")
 
 
-__all__ = ["SkillRegisterRequest", "SkillTriggerTestRequest"]
+__all__ = ["SkillRegisterRequest", "SkillPatchRequest", "SkillTriggerTestRequest"]

@@ -19,6 +19,7 @@ class SkillItem(BaseModel):
     triggers: list[str] = Field(default_factory=list, description="触发关键词/正则")
     tools: list[str] = Field(default_factory=list, description="关联工具")
     custom_message: str = Field(default="", description="激活时追加的特殊消息正文")
+    enabled: bool = Field(default=True, description="是否启用；禁用后 SkillTrigger 不再命中")
     source: str = Field(
         default="runtime",
         description="来源层：runtime / user / project / bundled（四层聚合仓库的优先级标识）",
@@ -66,6 +67,28 @@ class SkillDeleteResponse(BaseModel):
     deleted: bool = Field(default=True, description="true=确实注销了一个运行时 Skill；false=找不到或来自低层（低层不删）")
 
 
+class SkillPatchResponse(BaseModel):
+    """PATCH /skills/{name} 响应体 —— 启用/禁用后的 Skill 快照。"""
+
+    skill: SkillItem = Field(..., description="更新后的 Skill 项")
+
+
+class SkillVersionItem(BaseModel):
+    """GET /skills/{name}/versions 响应中的单个历史版本。"""
+
+    version: str = Field(..., description="旧版本的语义化版本号")
+    description: str = Field(default="", description="旧版本的简短说明")
+    source: str = Field(default="runtime", description="旧版本的来源层")
+    replaced_at: str = Field(..., description="被覆盖的时间（UTC ISO 字符串）")
+
+
+class SkillVersionsResponse(BaseModel):
+    """GET /skills/{name}/versions 响应体 —— 内存版历史版本列表。"""
+
+    items: list[SkillVersionItem] = Field(default_factory=list, description="历史版本，新版本在前")
+    total: int = Field(default=0, description="历史版本数")
+
+
 __all__ = [
     "SkillItem",
     "SkillListResponse",
@@ -74,4 +97,7 @@ __all__ = [
     "SkillTriggerTestResponse",
     "SkillRegisterResponse",
     "SkillDeleteResponse",
+    "SkillPatchResponse",
+    "SkillVersionItem",
+    "SkillVersionsResponse",
 ]

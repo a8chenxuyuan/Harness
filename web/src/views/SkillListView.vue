@@ -32,11 +32,15 @@
       <div v-if="loading" class="empty">加载中…</div>
       <div v-else-if="items.length === 0" class="empty">暂无 Skill。内置 Skill 通常存放在项目目录 .harness/skills/ 下。</div>
       <div v-else class="skill-grid">
-        <div v-for="skill in items" :key="skill.name" class="skill-card">
+        <div v-for="skill in items" :key="skill.name" class="skill-card" :class="{ disabled: !skill.enabled }">
           <div class="card-head">
             <span class="pill" :class="sourceClass(skill.source)">{{ skill.source }}</span>
             <span class="name">{{ skill.name }}</span>
             <span class="ver muted">v{{ skill.version }}</span>
+            <label class="switch" :title="skill.enabled ? '已启用，点击禁用' : '已禁用，点击启用'">
+              <input type="checkbox" :checked="skill.enabled" @change="handleToggle(skill)" />
+              <span class="slider"></span>
+            </label>
           </div>
           <div v-if="skill.description" class="desc">{{ skill.description }}</div>
           <div v-if="skill.triggers.length" class="chips">
@@ -49,6 +53,7 @@
             {{ skill.custom_message.length > 100 ? skill.custom_message.slice(0, 100) + "…" : skill.custom_message }}
           </div>
           <div class="card-foot">
+            <button class="btn ghost sm" @click="openVersions(skill)">版本</button>
             <button class="btn ghost sm" :disabled="skill.source !== 'runtime'" @click="handleDelete(skill)">
               {{ skill.source !== "runtime" ? "低层不可删" : "卸载" }}
             </button>
@@ -94,14 +99,39 @@
         </div>
       </div>
     </div>
+    <!-- 版本历史弹窗 -->
+    <div v-if="versionsOf" class="modal-backdrop" @click.self="versionsOf = null">
+      <div class="modal">
+        <h3>历史版本：{{ versionsOf }}</h3>
+        <p class="muted">仅记录 API 覆盖注册时被替换的旧版本（内存态，进程重启后清空）。</p>
+        <div v-if="versionsLoading" class="empty">加载中…</div>
+        <div v-else-if="versions.length === 0" class="empty">暂无历史版本。同名覆盖注册后才会产生记录。</div>
+        <table v-else class="ver-table">
+          <thead>
+            <tr><th>版本</th><th>来源</th><th>说明</th><th>被覆盖时间</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="(v, i) in versions" :key="i">
+              <td>v{{ v.version }}</td>
+              <td><span class="pill" :class="sourceClass(v.source)">{{ v.source }}</span></td>
+              <td class="muted">{{ v.description || "—" }}</td>
+              <td class="muted">{{ v.replaced_at }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="modal-actions">
+          <button class="btn ghost" @click="versionsOf = null">关闭</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { reactive, ref } from "vue";
 
-import { deleteSkill, listSkills, registerSkill, triggerSkillTest } from "@/api/skills";
-import type { SkillItem, SkillRegisterBody, SkillTriggerMatch } from "@/api/types";
+import { deleteSkill, listSkillVersions, listSkills, patchSkill, registerSkill, triggerSkillTest } from "@/api/skills";
+import type { SkillItem, SkillRegisterBody, SkillTriggerMatch, SkillVersionItem } from "@/api/types";
 import PageHeader from "@/components/PageHeader.vue";
 import { pushToast } from "@/composables/toast";
 
@@ -112,6 +142,9 @@ const registering = ref(false);
 const triggerText = ref("");
 const triggerTesting = ref(false);
 const triggerMatches = ref<SkillTriggerMatch[]>([]);
+const versionsOf = ref<string | null>(null);
+const versions = ref<SkillVersionItem[]>([]);
+const versionsLoading = ref(false);
 
 const reg = reactive<SkillRegisterBody>({
   name: "",
@@ -183,6 +216,34 @@ async function handleDelete(skill: SkillItem): Promise<void> {
     await reload();
   } catch (err) {
     pushToast(err instanceof Error ? err.message : "卸载失败");
+  }
+}
+
+/** 启用/禁用一个 Skill（任意来源层均可，内存态）。 */
+async function handleToggle(skill: SkillItem): Promise<void> {
+  const target = !skill.enabled;
+  try {
+    await patchSkill(skill.name, { enabled: target });
+    pushToast(target ? `已启用 ${skill.name}` : `已禁用 ${skill.name}`);
+    await reload();
+  } catch (err) {
+    pushToast(err instanceof Error ? err.message : "操作失败");
+    await reload();
+  }
+}
+
+/** 打开版本历史弹窗并拉取数据。 */
+async function openVersions(skill: SkillItem): Promise<void> {
+  versionsOf.value = skill.name;
+  versions.value = [];
+  versionsLoading.value = true;
+  try {
+    const data = await listSkillVersions(skill.name);
+    versions.value = data.items;
+  } catch (err) {
+    pushToast(err instanceof Error ? err.message : "加载版本历史失败");
+  } finally {
+    versionsLoading.value = false;
   }
 }
 
@@ -264,6 +325,65 @@ void reload();
 .card-head .ver {
   font-size: 12px;
   margin-left: auto;
+}
+/* 启用/禁用开关 */
+.switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 34px;
+  height: 18px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.switch .slider {
+  position: absolute;
+  inset: 0;
+  background: var(--border, #ccc);
+  border-radius: 9px;
+  transition: background 0.2s;
+}
+.switch .slider::before {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  left: 2px;
+  top: 2px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+.switch input:checked + .slider {
+  background: var(--accent, #3b82f6);
+}
+.switch input:checked + .slider::before {
+  transform: translateX(16px);
+}
+/* 禁用态卡片整体淡化 */
+.skill-card.disabled {
+  opacity: 0.55;
+}
+/* 版本历史表格 */
+.ver-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.ver-table th,
+.ver-table td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border, #e1e3e8);
+}
+.ver-table th {
+  color: var(--fg-dim, #666);
+  font-weight: 500;
 }
 .desc {
   font-size: 13px;

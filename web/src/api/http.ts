@@ -82,3 +82,8 @@ export async function del<T>(url: string): Promise<T> {
   const response = await http.delete<ApiResponse<T>>(url);
   return unwrap(response.data);
 }
+
+export async function patch<T>(url: string, body?: unknown): Promise<T> {
+  const response = await http.patch<ApiResponse<T>>(url, body);
+  return unwrap(response.data);
+}

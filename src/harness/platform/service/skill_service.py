@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from typing import Any
 
 from harness.integrations.skill.model import Skill as CoreSkill
@@ -39,6 +40,11 @@ _LAYER_LABEL = {
 
 # Service 单例（进程内唯一 SkillRepository，避免重复 load_all）
 _repo_instance: SkillRepository | None = None
+
+# 版本历史（内存态）：name → 旧版本快照列表，新版本在前。
+# register_skill 覆盖同名 Skill 时，把被替换的旧版本记录到这里，
+# 供 GET /skills/{name}/versions 查询。进程重启即清空，不做持久化。
+_version_history: dict[str, list[dict[str, Any]]] = {}
 
 
 def get_skill_repository() -> SkillRepository:
@@ -80,6 +86,7 @@ def _skill_to_item(skill: CoreSkill) -> dict[str, Any]:
         "triggers": list(skill.triggers),
         "tools": list(skill.tools),
         "custom_message": skill.custom_message,
+        "enabled": skill.enabled,
         "source": source,
         "metadata": metadata,
     }
@@ -137,8 +144,23 @@ async def register_skill(
     if not repo.loaded:
         await repo.load_all()
 
-    # 先查是否已有同名运行时 skill → 用来判断 replaced
-    was_runtime = repo.get_by_name(name) is not None
+    # 先查是否已有同名 skill → 用来判断 replaced + 记录版本历史
+    existing = repo.get_by_name(name)
+    was_runtime = existing is not None
+    if existing is not None:
+        # 覆盖注册：把被替换的旧版本快照记入内存版历史（新版本在前）
+        history = _version_history.setdefault(name, [])
+        history.insert(
+            0,
+            {
+                "version": existing.version,
+                "description": existing.description,
+                "source": _LAYER_LABEL.get(
+                    existing.metadata.get("__layer__") if existing.metadata else None, "runtime"
+                ),
+                "replaced_at": _utc_now_iso(),
+            },
+        )
 
     skill = CoreSkill(
         name=name,
@@ -221,12 +243,59 @@ async def trigger_test(text: str) -> list[dict[str, Any]]:
     return result
 
 
+# ---------------------------------------------------------------------------
+# 版本历史 / 启用禁用
+# ---------------------------------------------------------------------------
+
+def _utc_now_iso() -> str:
+    """当前 UTC 时间的 ISO 字符串，用于版本历史的 replaced_at 字段。"""
+    return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+async def patch_skill(name: str, *, enabled: bool) -> dict[str, Any] | None:
+    """启用/禁用一个 Skill（任意来源层均可，进程内内存态）。
+
+    禁用后 SkillTrigger 不再命中该 Skill，但定义保留在仓库里，
+    重新启用立即恢复，无需重新注册。
+
+    Returns:
+        更新后的 SkillItem dict；名字不存在返回 None。
+    """
+    repo = get_skill_repository()
+    if not repo.loaded:
+        await repo.load_all()
+
+    skill = repo.set_enabled(name, enabled)
+    if skill is None:
+        return None
+
+    log.info("SkillService.patch_skill: %s enabled=%s", name, enabled)
+    return _skill_to_item(skill)
+
+
+async def list_skill_versions(name: str) -> list[dict[str, Any]]:
+    """查一个 Skill 的历史版本（内存态，仅记录被覆盖注册的旧版本）。
+
+    不含当前生效版本（当前版本请走 GET /skills/{name}）。
+    进程重启后历史清空，从当前版本重新开始记录。
+    """
+    repo = get_skill_repository()
+    if not repo.loaded:
+        await repo.load_all()
+
+    if repo.get_by_name(name) is None:
+        return []
+    return list(_version_history.get(name, []))
+
+
 __all__ = [
     "get_skill_repository",
     "init_skill_repository",
     "list_skills",
     "get_skill",
     "register_skill",
+    "patch_skill",
+    "list_skill_versions",
     "delete_skill",
     "trigger_test",
 ]

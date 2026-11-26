@@ -45,6 +45,9 @@ class SkillTrigger:
         candidates = self._repo.get_all()
         matched: list[Skill] = []
         for skill in candidates:
+            # 禁用的 Skill 直接跳过：不命中、不激活，但定义保留在仓库里
+            if not skill.enabled:
+                continue
             if self._skill_matches(skill, text):
                 matched.append(skill)
 
