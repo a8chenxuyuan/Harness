@@ -24,6 +24,54 @@ from .cache_profile import CacheMode, CacheHints
 from .types import ChatChunk, GenerateOptions, ToolCall, ToolCallDelta, Usage
 
 
+def _parse_usage(raw: dict[str, Any]) -> Usage:
+    """把供应商的 usage 字典转成统一 Usage。
+
+    DeepSeek 用 `prompt_cache_hit_tokens` 表示缓存命中，OpenAI 用
+    `prompt_tokens_details.cached_tokens`，两者都兼容。
+
+    Args:
+        raw: SSE 末尾 usage 块或非流式响应里的 usage 字段。
+
+    Returns:
+        统一结构的 Usage。
+    """
+    details = raw.get("prompt_tokens_details") or {}
+    prompt = raw.get("prompt_tokens", 0) or 0
+    completion = raw.get("completion_tokens", 0) or 0
+    return Usage(
+        prompt_tokens=prompt,
+        completion_tokens=completion,
+        total_tokens=raw.get("total_tokens", 0) or (prompt + completion),
+        cache_read_tokens=(
+            raw.get("prompt_cache_hit_tokens")
+            or details.get("cached_tokens")
+            or 0
+        ),
+    )
+
+
+# 已知模型的上下文窗口（token）。未命中时退回保守的 32k。
+_MODEL_CONTEXT_WINDOWS: dict[str, int] = {
+    "deepseek-flash": 1_048_576,      # DeepSeek-V4.1-Flash
+    "deepseek-v4-pro": 1_048_576,     # DeepSeek-V4-Pro
+    "deepseek-v4": 1_048_576,
+    "deepseek-chat": 128_000,
+    "deepseek-reasoner": 128_000,
+}
+
+
+def _infer_context_window(model: str) -> int:
+    """按模型名推断上下文窗口；未知模型退回 32k 保守值。"""
+    name = model.lower().strip()
+    if name in _MODEL_CONTEXT_WINDOWS:
+        return _MODEL_CONTEXT_WINDOWS[name]
+    # 兼容 deepseek-v4-xxx 这类衍生名
+    if name.startswith("deepseek") and "v4" in name:
+        return 1_048_576
+    return 32_000
+
+
 def _msg_to_openai(msg: Msg) -> dict[str, Any]:
     """把 Msg 转成 OpenAI chat/completions 需要的 dict。
 
@@ -72,11 +120,10 @@ class OpenAICompat(Model):
     # ------------------------------------------------------------------
 
     def detect_capabilities(self) -> ModelCapabilities:
-        """根据 base_url 推断缓存方式。
+        """根据 base_url 推断缓存方式，按模型名推断上下文窗口。
 
-        - URL 含 deepseek → automatic + 64 min_cacheable
-        - URL 含 ollama / localhost → none
-        - 其他 → automatic + 1024（OpenAI 官方 / 国产兼容）
+        - URL 含 ollama / localhost → 无缓存
+        - 上下文窗口：DeepSeek V4 为 1M，chat/reasoner 为 128k，其余保守 32k
 
         所有兼容接口默认支持 tools 和 streaming。
         """
@@ -88,7 +135,7 @@ class OpenAICompat(Model):
         else:
             cache_mode = CacheMode.AUTOMATIC
         return ModelCapabilities(
-            max_context_tokens=32_000,
+            max_context_tokens=_infer_context_window(self.model_name),
             supports_tools=True,
             supports_cache_control=False,  # OpenAI 兼容接口不支持显式断点
             supports_structured_output=True,
@@ -123,10 +170,21 @@ class OpenAICompat(Model):
             payload["max_tokens"] = options.max_tokens
         if options.stop:
             payload["stop"] = options.stop
+        # 流式 usage 默认不返回，需显式开启；Ollama 等本地服务不支持该字段
+        if not self._is_local_endpoint():
+            payload["stream_options"] = {"include_usage": True}
         # 透传 extra
         for k, v in options.extra.items():
             payload[k] = v
         return payload
+
+    def _is_local_endpoint(self) -> bool:
+        """是否指向本地推理服务（Ollama / localhost）。
+
+        这类服务通常不支持 `stream_options` 等云端扩展字段，需要跳过。
+        """
+        lowered = self.base_url.lower()
+        return "ollama" in lowered or "localhost" in lowered or "127.0.0.1" in lowered
 
     def _build_headers(self) -> dict[str, str]:
         headers = {"Content-Type": "application/json"}
@@ -163,6 +221,11 @@ class OpenAICompat(Model):
         delta_text = ""
         tool_deltas: list[ToolCallDelta] = []
         finish_reason: str | None = None
+        usage: Usage | None = None
+
+        raw_usage = payload.get("usage")
+        if raw_usage:
+            usage = _parse_usage(raw_usage)
 
         choices = payload.get("choices", [])
         if choices:
@@ -187,6 +250,7 @@ class OpenAICompat(Model):
             delta=delta_text,
             tool_calls_delta=tool_deltas,
             finish_reason=finish_reason,
+            usage=usage,
             raw=payload,
         )
 

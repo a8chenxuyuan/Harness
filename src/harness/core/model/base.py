@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from harness.common.message.msg import Msg
 from .cache_profile import CacheMode
-from .types import ChatChunk, ChatResponse, GenerateOptions, ToolCall, Usage
+from .types import ChatChunk, ChatResponse, GenerateOptions, ToolCall, Usage, merge_usage
 
 
 class ModelCapabilities(BaseModel):
@@ -137,6 +137,8 @@ class Model(abc.ABC):
                     )
             if chunk.finish_reason is not None:
                 last_finish_reason = chunk.finish_reason
+            # usage 可能分多块上报（开头输入、结尾输出），按字段取最大值合并
+            usage = merge_usage(usage, chunk.usage)
 
         # 所有流结束后，json.loads 拼好的 arguments
         tool_calls: list[ToolCall] = []

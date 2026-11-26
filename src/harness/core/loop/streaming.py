@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Any, AsyncIterator
 
 from harness.common.message.content_block import ToolUseBlock
 from harness.common.message.helpers import assistant_message, tool_result_message
-from harness.core.model.types import GenerateOptions, ToolCall
+from harness.core.model.types import GenerateOptions, ToolCall, Usage, merge_usage
 from harness.core.tool.base import ToolResult
 from harness.core.tool.budget import ToolBudget
 
@@ -187,6 +187,7 @@ async def run_with_stream(
         tool_json_fragments = _new_tool_call_fragments()
         tool_call_meta = _new_tool_call_meta()
         last_finish_reason = "stop"
+        round_usage = Usage()
 
         yield LoopStreamEvent(
             event_type=EVENT_ASSEMBLED,
@@ -226,6 +227,8 @@ async def run_with_stream(
 
                 if chunk.finish_reason is not None:
                     last_finish_reason = chunk.finish_reason
+
+                round_usage = merge_usage(round_usage, chunk.usage)
         except Exception as exc:  # noqa: BLE001
             yield LoopStreamEvent(
                 event_type=EVENT_ERROR,
@@ -233,6 +236,8 @@ async def run_with_stream(
             )
             state.mark_stopped(f"model_error: {exc}")
             return
+
+        state.add_usage(round_usage)
 
         tool_calls = _assemble_tool_calls(tool_call_meta, tool_json_fragments)
         full_text = "".join(text_parts)

@@ -16,7 +16,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from harness.common.message.msg import Msg
-from harness.core.model.types import ToolCall
+from harness.core.model.types import ToolCall, Usage
 
 
 class AgentState(BaseModel):
@@ -41,6 +41,7 @@ class AgentState(BaseModel):
             供 recovery 做"助手复读"相似度检查。
         session_id: 会话标识，传给 ContextAssembler 与 EventBus。
         volatile_context: 每轮临时信息（当前时间等），assemble 时注入。
+        token_usage: 整条循环累计的 token 用量，供运行记录与成本统计。
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -59,6 +60,7 @@ class AgentState(BaseModel):
     last_response_text: str = ""
     session_id: str = "default"
     volatile_context: dict[str, Any] = Field(default_factory=dict)
+    token_usage: Usage = Field(default_factory=Usage)
 
     # --- 便捷查询 -----------------------------------------------------------------
 
@@ -71,6 +73,33 @@ class AgentState(BaseModel):
     def should_stop(self) -> bool:
         """是否应该终止循环（stopping 或 max_steps）。"""
         return self.stopping or self.hit_max_steps
+
+    @property
+    def metrics(self) -> dict[str, int]:
+        """对外暴露的指标快照，直接写入 agent_runs.token_usage。"""
+        return {
+            "prompt_tokens": self.token_usage.prompt_tokens,
+            "completion_tokens": self.token_usage.completion_tokens,
+            "total_tokens": self.token_usage.total_tokens,
+            "cache_read_tokens": self.token_usage.cache_read_tokens,
+        }
+
+    def add_usage(self, usage: Usage) -> None:
+        """把一轮模型调用的 usage 累加进会话总计。
+
+        Args:
+            usage: 本轮 model.stream 合并后的 token 用量。
+        """
+        self.token_usage = Usage(
+            prompt_tokens=self.token_usage.prompt_tokens + usage.prompt_tokens,
+            completion_tokens=(
+                self.token_usage.completion_tokens + usage.completion_tokens
+            ),
+            total_tokens=self.token_usage.total_tokens + usage.total_tokens,
+            cache_read_tokens=(
+                self.token_usage.cache_read_tokens + usage.cache_read_tokens
+            ),
+        )
 
     def mark_stopped(self, reason: str) -> None:
         """标记终止并写入 stop_reason。
