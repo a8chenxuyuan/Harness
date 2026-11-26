@@ -67,9 +67,16 @@ class ChatStreamService:
         self.messages = MessageService(user, db)
         self.runs = AgentRunRepository(db)
 
-    async def stream(self, session_id: str, goal: str) -> AsyncIterator[StreamEvent]:
-        """执行一次流式对话，按事件序列产出 StreamEvent。"""
-        run_id = f"run-{uuid.uuid4().hex[:12]}"
+    async def stream(
+        self, session_id: str, goal: str, run_id: str | None = None
+    ) -> AsyncIterator[StreamEvent]:
+        """执行一次流式对话，按事件序列产出 StreamEvent。
+
+        Args:
+            run_id: 可选的外部运行 id（幂等键场景由 Controller 预生成，
+                保证 409 冲突时能返回同一个 run_id）。
+        """
+        run_id = run_id or f"run-{uuid.uuid4().hex[:12]}"
         run_record = await self._create_run(run_id, goal, session_id)
 
         await self.messages.append_message(

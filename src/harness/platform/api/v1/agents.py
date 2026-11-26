@@ -7,7 +7,9 @@ Plan 执行走 ``service.run_registry`` 的后台 asyncio.Task，
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+import logging
+
+from fastapi import APIRouter, Depends, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from harness.platform.api.deps import get_current_user, get_db
@@ -25,11 +27,15 @@ from harness.platform.api.vo.plan_vo import (
 )
 
 router = APIRouter(prefix="/agents", tags=["agents"])
+log = logging.getLogger(__name__)
 
 
 @router.post("/run", response_model=ApiResponse[AgentRunResponse])
 async def run_agent(
     req: AgentRunRequest,
+    idempotency_key: str | None = Header(
+        default=None, alias="Idempotency-Key", description="幂等键（可选）"
+    ),
     user: UserInfo = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
@@ -37,10 +43,34 @@ async def run_agent(
 
     mode=single 直接跑单 Agent；
     mode=coordinator 走 Plan → Review → Executor 完整多 Agent 链路。
+    传 ``Idempotency-Key`` 时：同 key + 同请求体重复调用直接回放上次结果。
     """
     from harness.platform.api.exceptions import BizError
+    from harness.platform.api.idempotency_helpers import conflict_error, normalize_key
     from harness.platform.auth.audit import record_audit
     from harness.platform.service.agent_service import AgentService
+    from harness.platform.service.idempotency_service import (
+        SCOPE_RUN,
+        IdempotencyService,
+        hash_request,
+    )
+
+    key = normalize_key(idempotency_key)
+    idem = IdempotencyService(db)
+    record = None
+    if key is not None:
+        claim = await idem.claim(
+            user.tenant_id,
+            SCOPE_RUN,
+            key,
+            hash_request(req.model_dump()),
+            replay_completed=True,
+        )
+        if claim.cached is not None:
+            return {"code": 0, "message": "ok", "data": claim.cached}
+        if claim.conflict:
+            raise conflict_error(claim)
+        record = claim.record
 
     try:
         result = await AgentService(user, db).run(
@@ -49,8 +79,12 @@ async def run_agent(
             conversation_id=req.conversation_id,
         )
     except BizError:
+        if record is not None:
+            await idem.release(record)
         raise
     except Exception as exc:  # noqa: BLE001
+        if record is not None:
+            await idem.release(record)
         await record_audit(
             db,
             tenant_id=user.tenant_id,
@@ -62,6 +96,12 @@ async def run_agent(
             detail={"error": str(exc)},
         )
         raise
+
+    if record is not None:
+        try:
+            await idem.complete(record, result)
+        except Exception as exc:  # noqa: BLE001 — 缓存写入失败不影响本次结果
+            log.warning("idempotency: 缓存写入失败 key=%s err=%s", key, exc)
 
     await record_audit(
         db,

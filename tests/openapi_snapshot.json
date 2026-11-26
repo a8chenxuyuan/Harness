@@ -1990,9 +1990,27 @@
     },
     "/api/v1/agents/run": {
       "post": {
-        "description": "同步运行 Agent。\n\nmode=single 直接跑单 Agent；\nmode=coordinator 走 Plan → Review → Executor 完整多 Agent 链路。",
+        "description": "同步运行 Agent。\n\nmode=single 直接跑单 Agent；\nmode=coordinator 走 Plan → Review → Executor 完整多 Agent 链路。\n传 ``Idempotency-Key`` 时：同 key + 同请求体重复调用直接回放上次结果。",
         "operationId": "run_agent_api_v1_agents_run_post",
         "parameters": [
+          {
+            "description": "幂等键（可选）",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "幂等键（可选）",
+              "title": "Idempotency-Key"
+            }
+          },
           {
             "in": "header",
             "name": "authorization",
@@ -2051,9 +2069,27 @@
     },
     "/api/v1/agents/run/stream": {
       "post": {
-        "description": "流式运行单 Agent，按 SSE 推送增量事件。",
+        "description": "流式运行单 Agent，按 SSE 推送增量事件。\n\n传 ``Idempotency-Key`` 时：同 key 重复请求直接 409 + run_id（流式不缓存回放）。",
         "operationId": "run_agent_stream_api_v1_agents_run_stream_post",
         "parameters": [
+          {
+            "description": "幂等键（可选）",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "幂等键（可选）",
+              "title": "Idempotency-Key"
+            }
+          },
           {
             "in": "header",
             "name": "authorization",

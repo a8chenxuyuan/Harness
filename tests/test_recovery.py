@@ -45,6 +45,7 @@ async def test_recovery_converges_transient_states(db_session) -> None:
         "runs_interrupted": 1,
         "messages_failed": 1,
         "plans_interrupted": 1,
+        "idempotency_released": 0,
     }
 
     db_session.expire_all()
@@ -71,4 +72,5 @@ async def test_recovery_is_idempotent(db_session) -> None:
         "runs_interrupted": 0,
         "messages_failed": 0,
         "plans_interrupted": 0,
+        "idempotency_released": 0,
     }

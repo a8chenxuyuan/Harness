@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from harness.platform.entity.agent_run import AgentRun
 from harness.platform.entity.audit_log import AuditLog
+from harness.platform.entity.idempotency_key import IdempotencyRecord
 from harness.platform.entity.memory import MemoryEntry
 from harness.platform.entity.plan import PlanRecord
 from harness.platform.entity.session import SessionRecord
@@ -28,4 +29,5 @@ __all__ = [
     "AuditLog",
     "MemoryEntry",
     "PlanRecord",
+    "IdempotencyRecord",
 ]

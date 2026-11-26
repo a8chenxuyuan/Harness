@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 
 from harness.platform.repository.agent_run_repository import AgentRunRepository
+from harness.platform.repository.idempotency_repository import IdempotencyRepository
 from harness.platform.repository.plan_repository import PlanRepository
 from harness.platform.repository.session_message_repository import (
     SessionMessageRepository,
@@ -33,9 +34,10 @@ class RecoveryService:
         self.runs = AgentRunRepository(session)
         self.messages = SessionMessageRepository(session)
         self.plans = PlanRepository(session)
+        self.idempotency = IdempotencyRepository(session)
 
     async def recover(self) -> dict[str, int]:
-        """执行三类恢复，返回各自影响行数。"""
+        """执行四类恢复，返回各自影响行数。"""
         counts = {
             "runs_interrupted": await self.runs.mark_statuses(
                 "running", "interrupted", error=RUN_INTERRUPTED_ERROR
@@ -46,6 +48,8 @@ class RecoveryService:
             "plans_interrupted": await self.plans.mark_statuses(
                 "running", "interrupted"
             ),
+            # 崩溃时未完成的幂等占位一并释放，避免同 key 永久 409
+            "idempotency_released": await self.idempotency.delete_in_progress(),
         }
         return counts
 
