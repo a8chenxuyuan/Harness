@@ -45,6 +45,34 @@
   font-weight: 550;
 }
 
+.msg-status {
+  font-size: 10.5px;
+}
+
+.msg-status.failed {
+  color: #f87171;
+}
+
+.msg-status.cancelled {
+  color: #fbbf24;
+}
+
+.msg-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn.mini {
+  padding: 3px 9px;
+  font-size: 11px;
+}
+
+.composer-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .bubble {
   background: var(--surface-2);
   border: 1px solid var(--line);

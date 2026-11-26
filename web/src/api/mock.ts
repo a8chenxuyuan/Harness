@@ -3,10 +3,13 @@ import type {
   ChatMessage,
   ChatMessageListData,
   LoginData,
+  MessageBranchData,
+  MessageRetryData,
   RunData,
   SessionDetail,
   SessionListData,
   SessionSummary,
+  StreamCancelData,
   UserInfo,
 } from "./types";
 
@@ -198,4 +201,91 @@ export async function mockSendMessage(sessionId: string, text: string): Promise<
     status: "completed",
     output: `（mock）收到：${text}`,
   }, 600);
+}
+
+// ---------------------------------------------------------------------------
+// 流式取消 / 重试 / 分支
+// ---------------------------------------------------------------------------
+
+/** 标记 mock 运行为已取消。 */
+export async function mockCancelStreamRun(runId: string): Promise<StreamCancelData> {
+  const state = runs.get(runId);
+  if (state) state.cancelled = true;
+  return delay({ run_id: runId, status: "cancelled" }, 80);
+}
+
+/** 软删失败消息与其上一条 user 消息，返回原文。 */
+export async function mockRetryMessage(
+  sessionId: string,
+  messageId: string,
+): Promise<MessageRetryData> {
+  const list = messages.get(sessionId) ?? [];
+  const index = list.findIndex((item) => item.id === messageId);
+  if (index < 0) throw new Error("消息不存在");
+  const target = list[index];
+  if (target.role !== "assistant" || !["failed", "cancelled"].includes(target.status)) {
+    throw new Error("只有失败或取消的助手消息可以重试");
+  }
+  if (index !== list.length - 1) throw new Error("只能重试最后一条消息");
+
+  const source = index > 0 && list[index - 1].role === "user" ? list[index - 1] : null;
+  const removed: string[] = [];
+  const kept = list.filter((item) => {
+    if (item === target || item === source) {
+      removed.push(item.id);
+      return false;
+    }
+    return true;
+  });
+  list.length = 0;
+  list.push(...kept);
+
+  const found = allSessions.find((item) => item.session_id === sessionId);
+  if (found) found.message_count = list.length;
+  return delay({
+    session_id: sessionId,
+    message_id: messageId,
+    text: source?.text ?? "",
+    removed_message_ids: removed,
+  }, 140);
+}
+
+/** 以目标消息为分界复制到新会话。 */
+export async function mockBranchMessage(
+  sessionId: string,
+  messageId: string,
+): Promise<MessageBranchData> {
+  const sourceSession = allSessions.find((item) => item.session_id === sessionId);
+  if (!sourceSession) throw new Error("会话不存在");
+  const list = messages.get(sessionId) ?? [];
+  const index = list.findIndex((item) => item.id === messageId);
+  if (index < 0) throw new Error("消息不存在");
+
+  const newSessionId = `s-${Date.now().toString(16)}b`;
+  const copied: ChatMessage[] = list.slice(0, index + 1).map((item, position) => ({
+    ...item,
+    id: `m-${++msgSeq}`,
+    session_id: newSessionId,
+    seq: position + 1,
+    parent_id: item.id,
+  }));
+  const title = `${sourceSession.title || "会话"} · 分支`;
+  allSessions.unshift({
+    session_id: newSessionId,
+    title,
+    status: "active",
+    message_count: copied.length,
+    updated_at: "刚刚",
+    created_at: new Date().toISOString(),
+    tenant_id: "dev-tenant",
+  });
+  messages.set(newSessionId, copied);
+
+  return delay({
+    session_id: newSessionId,
+    source_session_id: sessionId,
+    source_message_id: messageId,
+    title,
+    message_count: copied.length,
+  }, 160);
 }

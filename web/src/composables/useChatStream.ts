@@ -1,7 +1,7 @@
-/** 会话流式发送：维护打字机文本、工具块、错误态与结束刷新。 */
+/** 会话流式发送：维护打字机文本、工具块、错误态、取消与结束刷新。 */
 import { computed, ref } from "vue";
 
-import { streamMessage } from "@/api/messages";
+import { cancelStreamRun, streamMessage } from "@/api/messages";
 import type { ChatMessage, MessagePart, StreamToolData } from "@/api/types";
 
 export interface ChatStreamOptions {
@@ -20,6 +20,9 @@ export function useChatStream(sessionId: () => string) {
   const text = ref("");
   const parts = ref<MessagePart[]>([]);
   const error = ref("");
+  const runId = ref("");
+  const stopping = ref(false);
+  const cancelled = ref(false);
   const toolIndex = new Map<string, number>();
 
   /** 流式中的助手消息（页面追加到消息列表尾部）。 */
@@ -52,6 +55,9 @@ export function useChatStream(sessionId: () => string) {
 
     try {
       await streamMessage(sessionId(), content, {
+        onStart: (data) => {
+          runId.value = data.run_id;
+        },
         onDelta: (delta) => {
           appendDelta(delta);
           options.onProgress?.();
@@ -62,6 +68,7 @@ export function useChatStream(sessionId: () => string) {
         },
         onEnd: (data) => {
           if (data.status === "failed") error.value = data.error || "运行失败";
+          if (data.status === "cancelled") cancelled.value = true;
         },
         onError: (reason) => {
           error.value = reason;
@@ -81,10 +88,26 @@ export function useChatStream(sessionId: () => string) {
     }
   }
 
+  /** 停止当前流式生成：服务端在下一个事件前收尾并推送 cancelled。 */
+  async function stop(): Promise<void> {
+    if (!active.value || !runId.value || stopping.value) return;
+    stopping.value = true;
+    try {
+      await cancelStreamRun(runId.value);
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : "取消失败";
+    } finally {
+      stopping.value = false;
+    }
+  }
+
   function reset(): void {
     text.value = "";
     parts.value = [];
     error.value = "";
+    runId.value = "";
+    stopping.value = false;
+    cancelled.value = false;
     toolIndex.clear();
   }
 
@@ -125,5 +148,17 @@ export function useChatStream(sessionId: () => string) {
     }
   }
 
-  return { active, text, parts, error, message, reset, send };
+  return {
+    active,
+    text,
+    parts,
+    error,
+    message,
+    runId,
+    stopping,
+    cancelled,
+    reset,
+    send,
+    stop,
+  };
 }

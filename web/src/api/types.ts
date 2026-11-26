@@ -114,8 +114,31 @@ export interface StreamToolData {
 
 /** SSE message_end 事件。 */
 export interface StreamEndData {
-  status: "completed" | "failed";
+  status: "completed" | "cancelled" | "failed";
   message: ChatMessage;
   metrics?: Record<string, number>;
   error?: string | null;
+}
+
+/** POST /agents/runs/{run_id}/cancel 响应。 */
+export interface StreamCancelData {
+  run_id: string;
+  status: string;
+}
+
+/** POST /sessions/{sid}/messages/{mid}/retry 响应。 */
+export interface MessageRetryData {
+  session_id: string;
+  message_id: string;
+  text: string;
+  removed_message_ids: string[];
+}
+
+/** POST /sessions/{sid}/messages/{mid}/branch 响应。 */
+export interface MessageBranchData {
+  session_id: string;
+  source_session_id: string;
+  source_message_id: string;
+  title: string;
+  message_count: number;
 }

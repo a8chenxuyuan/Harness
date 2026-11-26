@@ -1,9 +1,18 @@
 /** 会话消息接口：读取消息列表 / 发送消息（同步或 SSE 流式）。 */
 import { ApiError, get, post, TOKEN_KEY } from "./http";
-import { mockListMessages, mockSendMessage } from "./mock";
+import {
+  mockBranchMessage,
+  mockCancelStreamRun,
+  mockListMessages,
+  mockRetryMessage,
+  mockSendMessage,
+} from "./mock";
 import type {
   ChatMessageListData,
+  MessageBranchData,
+  MessageRetryData,
   RunData,
+  StreamCancelData,
   StreamEndData,
   StreamStartData,
   StreamToolData,
@@ -133,4 +142,36 @@ export async function streamMessage(
     }
   }
   if (buffer.trim()) dispatch(buffer, handlers);
+}
+
+// ---------------------------------------------------------------------------
+// 运行控制与消息派生
+// ---------------------------------------------------------------------------
+
+/** POST /agents/runs/{run_id}/cancel（协作式取消） */
+export async function cancelStreamRun(runId: string): Promise<StreamCancelData> {
+  if (useMock) return mockCancelStreamRun(runId);
+  return post<StreamCancelData>(`/agents/runs/${runId}/cancel`);
+}
+
+/** POST /sessions/{id}/messages/{message_id}/retry（失败消息重试） */
+export async function retryMessage(
+  sessionId: string,
+  messageId: string,
+): Promise<MessageRetryData> {
+  if (useMock) return mockRetryMessage(sessionId, messageId);
+  return post<MessageRetryData>(
+    `/sessions/${sessionId}/messages/${messageId}/retry`,
+  );
+}
+
+/** POST /sessions/{id}/messages/{message_id}/branch（会话分支） */
+export async function branchMessage(
+  sessionId: string,
+  messageId: string,
+): Promise<MessageBranchData> {
+  if (useMock) return mockBranchMessage(sessionId, messageId);
+  return post<MessageBranchData>(
+    `/sessions/${sessionId}/messages/${messageId}/branch`,
+  );
 }

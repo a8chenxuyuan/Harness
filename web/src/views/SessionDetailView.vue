@@ -28,6 +28,8 @@
           >
             <div class="msg-meta">
               <span class="who">{{ roleLabel(message.role) }}</span>
+              <span v-if="message.status === 'failed'" class="msg-status failed">生成失败</span>
+              <span v-else-if="message.status === 'cancelled'" class="msg-status cancelled">已取消</span>
               <span class="mono faint">
                 {{ message.seq > 0 ? `#${message.seq}` : "流式" }}
               </span>
@@ -60,6 +62,14 @@
                 {{ message.text || (message.status === "streaming" ? "正在生成…" : "") }}
               </p>
             </div>
+            <div v-if="canAct(message)" class="msg-actions">
+              <button class="btn ghost mini" :disabled="acting" @click="retry(message)">
+                重试
+              </button>
+              <button class="btn ghost mini" :disabled="acting" @click="branch(message)">
+                分支
+              </button>
+            </div>
           </div>
 
           <div v-if="streamError" class="stream-error">
@@ -78,9 +88,19 @@
           ></textarea>
           <div class="composer-actions">
             <span class="faint">{{ messages.length }} 条消息</span>
-            <button class="btn primary" :disabled="sending || !draft.trim()" @click="send">
-              {{ sending ? "运行中…" : "发送" }}
-            </button>
+            <div class="composer-buttons">
+              <button
+                v-if="sending"
+                class="btn ghost mini"
+                :disabled="stopping"
+                @click="stopStream"
+              >
+                {{ stopping ? "停止中…" : "停止" }}
+              </button>
+              <button class="btn primary" :disabled="sending || !draft.trim()" @click="send">
+                {{ sending ? "运行中…" : "发送" }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -106,10 +126,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
-import { listMessages } from "@/api/messages";
+import { branchMessage, listMessages, retryMessage } from "@/api/messages";
 import { getSession, removeSession } from "@/api/sessions";
 import type { ChatMessage, MessagePart, SessionDetail } from "@/api/types";
 import PageHeader from "@/components/PageHeader.vue";
@@ -120,6 +140,7 @@ const route = useRoute();
 const router = useRouter();
 const loading = ref(true);
 const error = ref("");
+const acting = ref(false);
 const session = ref<SessionDetail | null>(null);
 const messages = ref<ChatMessage[]>([]);
 const draft = ref("");
@@ -129,6 +150,8 @@ const {
   active: sending,
   error: streamError,
   message: streamingMessage,
+  stopping,
+  stop: stopStream,
   send: sendStream,
 } = useChatStream(sessionId);
 
@@ -181,6 +204,12 @@ async function send(): Promise<void> {
   const text = draft.value.trim();
   if (!text || sending.value) return;
   draft.value = "";
+  await submit(text);
+}
+
+/** 用指定文本发起一次流式发送（发送与重试共用）。 */
+async function submit(text: string): Promise<void> {
+  if (!text.trim() || sending.value) return;
 
   await sendStream(text, {
     onUserMessage: (content) => {
@@ -205,6 +234,45 @@ async function send(): Promise<void> {
     onSettled: reloadMessages,
     onError: (reason) => pushToast(reason),
   });
+}
+
+/** 失败 / 取消的助手消息可重试或派生分支。 */
+function canAct(message: ChatMessage): boolean {
+  return (
+    message.role === "assistant" &&
+    (message.status === "failed" || message.status === "cancelled") &&
+    !sending.value
+  );
+}
+
+/** 重试：后端软删旧问答并返回原文，前端重新走 SSE。 */
+async function retry(message: ChatMessage): Promise<void> {
+  if (sending.value || acting.value) return;
+  acting.value = true;
+  try {
+    const data = await retryMessage(sessionId(), message.id);
+    await reloadMessages();
+    await submit(data.text);
+  } catch (err) {
+    pushToast(err instanceof Error ? err.message : "重试失败");
+  } finally {
+    acting.value = false;
+  }
+}
+
+/** 分支：复制历史到新会话并跳转。 */
+async function branch(message: ChatMessage): Promise<void> {
+  if (sending.value || acting.value) return;
+  acting.value = true;
+  try {
+    const data = await branchMessage(sessionId(), message.id);
+    pushToast(`已创建分支会话（${data.message_count} 条消息）`);
+    await router.push(`/sessions/${data.session_id}`);
+  } catch (err) {
+    pushToast(err instanceof Error ? err.message : "分支失败");
+  } finally {
+    acting.value = false;
+  }
 }
 
 function hasArgs(part: MessagePart): boolean {
@@ -246,6 +314,14 @@ function formatTime(value?: string): string {
 }
 
 onMounted(reload);
+
+// 分支会跳转到同一路由的新会话，组件被复用，需要按 id 变化重新拉取
+watch(
+  () => route.params.id,
+  (next, previous) => {
+    if (next && next !== previous) void reload();
+  },
+);
 </script>
 
 <style scoped src="./SessionDetailView.css"></style>
