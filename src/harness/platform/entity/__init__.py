@@ -18,6 +18,7 @@ from harness.platform.entity.plan import PlanRecord
 from harness.platform.entity.session import SessionRecord
 from harness.platform.entity.session_message import SessionMessage
 from harness.platform.entity.tenant import Tenant
+from harness.platform.entity.tenant_quota import TenantQuota, TenantUsageDaily
 from harness.platform.entity.user import User
 
 __all__ = [
@@ -30,4 +31,6 @@ __all__ = [
     "MemoryEntry",
     "PlanRecord",
     "IdempotencyRecord",
+    "TenantQuota",
+    "TenantUsageDaily",
 ]

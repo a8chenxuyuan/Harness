@@ -91,6 +91,13 @@ async def run_agent_stream(
         if claim.record is not None:
             record_id = claim.record.id
 
+    # 配额检查在开流前完成：超限直接返回 429，不建立 SSE
+    from harness.platform.service.quota_service import QuotaService
+
+    quota = QuotaService(db)
+    await quota.ensure_available(user.tenant_id)
+    await quota.record_run_started(user.tenant_id)
+
     async def _events() -> AsyncIterator[str]:
         # 独立 DB session：随 SSE 生命周期存活，不依赖请求依赖的清理时机
         from harness.platform.infra.engine import get_session_factory

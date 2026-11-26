@@ -52,6 +52,13 @@ class AgentService:
             {"run_id", "status", "output", "metrics"} —— 正好是 AgentRunResponse 的字段。
         """
         run_id = f"run-{uuid.uuid4().hex[:12]}"
+        # 配额检查：并发 / 当日消息 / 当日 token，超限直接 429 不创建运行记录
+        from harness.platform.service.quota_service import QuotaService
+
+        quota = QuotaService(self.db)
+        await quota.ensure_available(self.user.tenant_id)
+        await quota.record_run_started(self.user.tenant_id)
+
         record = await self._create_run(run_id, goal, mode, conversation_id)
         try:
             await self._append_user_message(conversation_id, goal)
@@ -80,6 +87,7 @@ class AgentService:
             )
             await self._append_assistant_message(conversation_id, result.get("output"))
 
+        await self._record_quota_usage(result, conversation_id)
         return result
 
     # ------------------------------------------------------------------
@@ -188,6 +196,24 @@ class AgentService:
         record.finished_at = now
         record.updated_at = now
         await self.runs.save(record)
+
+    async def _record_quota_usage(
+        self, result: dict[str, Any], conversation_id: str | None
+    ) -> None:
+        """累加当日用量（失败只记录日志，不影响运行结果）。"""
+        try:
+            metrics = result.get("metrics") or {}
+            tokens = int(metrics.get("total_tokens") or 0)
+            messages = 0
+            if conversation_id:
+                messages = 2 if result.get("output") else 1
+            from harness.platform.service.quota_service import QuotaService
+
+            await QuotaService(self.db).record_usage(
+                self.user.tenant_id, messages=messages, tokens=tokens
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("AgentService: 配额用量累加失败: %s", exc)
 
     async def _append_user_message(
         self, conversation_id: str | None, goal: str

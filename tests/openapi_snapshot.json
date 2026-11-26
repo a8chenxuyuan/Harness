@@ -1463,6 +1463,52 @@
         "title": "PlanSummary",
         "type": "object"
       },
+      "QuotaUpdateRequest": {
+        "description": "PUT /api/v1/tenant/quotas 请求体（字段可选，未传保持不变）。",
+        "properties": {
+          "max_concurrent_runs": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Concurrent Runs"
+          },
+          "max_daily_messages": {
+            "anyOf": [
+              {
+                "maximum": 10000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Daily Messages"
+          },
+          "max_daily_tokens": {
+            "anyOf": [
+              {
+                "maximum": 10000000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Daily Tokens"
+          }
+        },
+        "title": "QuotaUpdateRequest",
+        "type": "object"
+      },
       "RecentHttpError": {
         "description": "最近一条失败请求（4xx / 5xx）。",
         "properties": {
@@ -4378,6 +4424,116 @@
         "tags": [
           "v1",
           "steering"
+        ]
+      }
+    },
+    "/api/v1/tenant/quotas": {
+      "get": {
+        "description": "查看当前租户配额、当日用量与并发数。",
+        "operationId": "get_quotas_api_v1_tenant_quotas_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_dict_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Quotas",
+        "tags": [
+          "v1",
+          "tenant"
+        ]
+      },
+      "put": {
+        "description": "调整当前租户配额（仅 owner / admin）。",
+        "operationId": "update_quotas_api_v1_tenant_quotas_put",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuotaUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_dict_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Quotas",
+        "tags": [
+          "v1",
+          "tenant"
         ]
       }
     },

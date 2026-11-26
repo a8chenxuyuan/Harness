@@ -70,6 +70,23 @@ class AgentRunRepository(BaseRepository):
         )
         return result.first()
 
+    async def count_active(self, tenant_id: str) -> int:
+        """统计租户当前活跃运行数（queued / running）。"""
+        from sqlalchemy import func, select
+
+        Record = self.model
+        result = await self.session.exec(
+            select(func.count()).select_from(Record).where(
+                Record.tenant_id == tenant_id,
+                Record.status.in_(("queued", "running")),  # type: ignore[attr-defined]
+            )
+        )
+        rows = result.all()
+        if not rows:
+            return 0
+        value = rows[0]
+        return int(value) if isinstance(value, (int, float)) else int(value[0])
+
     async def mark_statuses(
         self, from_status: str, to_status: str, *, error: str | None = None
     ) -> int:

@@ -198,6 +198,15 @@ class ChatStreamService:
             return
         finally:
             cancel_registry.release(run_id)
+            try:
+                from harness.platform.service.quota_service import QuotaService
+
+                tokens = int(metrics.get("total_tokens") or 0)
+                await QuotaService(self.db).record_usage(
+                    self.user.tenant_id, messages=2, tokens=tokens
+                )
+            except Exception as exc:  # noqa: BLE001 — 用量累加失败不影响收尾
+                log.warning("ChatStreamService: 配额用量累加失败: %s", exc)
 
         response = await finalize_stream(
             self.user,
