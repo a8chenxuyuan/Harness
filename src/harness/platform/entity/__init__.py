@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 from harness.platform.entity.agent_run import AgentRun
+from harness.platform.entity.api_key import ApiKey
 from harness.platform.entity.audit_log import AuditLog
 from harness.platform.entity.idempotency_key import IdempotencyRecord
 from harness.platform.entity.memory import MemoryEntry
@@ -25,6 +26,7 @@ from harness.platform.entity.user import User
 __all__ = [
     "Tenant",
     "User",
+    "ApiKey",
     "SessionRecord",
     "SessionMessage",
     "AgentRun",

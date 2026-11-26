@@ -71,6 +71,12 @@ const router = createRouter({
           component: () => import("@/views/ToolMarketView.vue"),
           meta: { title: "工具市场" },
         },
+        {
+          path: "api-keys",
+          name: "api-keys",
+          component: () => import("@/views/ApiKeysView.vue"),
+          meta: { title: "API Key" },
+        },
       ],
     },
     { path: "/:pathMatch(.*)*", redirect: "/" },

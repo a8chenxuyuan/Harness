@@ -335,6 +335,43 @@ export interface McpServerRegisterBody {
 }
 
 // ---------------------------------------------------------------------------
+// API Key 机器调用（W4-API-01）
+// ---------------------------------------------------------------------------
+
+/** 单个 API Key 的脱敏展示项。 */
+export interface ApiKeyItem {
+  id: string;
+  name: string;
+  /** key 前缀（hk_ + 8 位，供人工辨认） */
+  key_prefix: string;
+  tenant_id: string;
+  created_by: string;
+  scopes: string;
+  is_active: boolean;
+  last_used_at: string | null;
+  expires_at: string | null;
+  created_at: string | null;
+}
+
+/** GET /api/v1/api-keys 响应。 */
+export interface ApiKeyListData {
+  items: ApiKeyItem[];
+  total: number;
+}
+
+/** POST /api/v1/api-keys 请求体。 */
+export interface ApiKeyCreateBody {
+  name: string;
+  expires_in_days?: number | null;
+}
+
+/** POST /api/v1/api-keys 响应（明文仅此一次）。 */
+export interface ApiKeyCreateData {
+  key: ApiKeyItem;
+  plaintext: string;
+}
+
+// ---------------------------------------------------------------------------
 // Memory 管理（W4-02）
 // ---------------------------------------------------------------------------
 

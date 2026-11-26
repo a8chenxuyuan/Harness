@@ -54,7 +54,7 @@ async def get_db():
 
 
 # ---------------------------------------------------------------------------
-# 认证：从 Authorization Bearer 解析 JWT
+# 认证：从 Authorization Bearer 解析 JWT 或 API Key（W4-API-01 起双轨）
 # ---------------------------------------------------------------------------
 
 def _dev_mode() -> bool:
@@ -75,19 +75,25 @@ def _dev_mode() -> bool:
         return False
 
 
-def get_current_user(
+async def get_current_user(
     authorization: str | None = Header(default=None),
+    db: Any = Depends(get_db),
 ) -> UserInfo:
-    """FastAPI dependency：从 Bearer JWT 解析当前用户。
+    """FastAPI dependency：从 Bearer 头解析当前调用者。
+
+    按 token 前缀双轨分流（W4-API-01）：
+        - ``hk_`` 开头 → API Key 机器调用：哈希查表校验，
+          role 记为 "machine"（api_key_service.authenticate_key）
+        - 其他        → 用户 JWT：decode 校验，role 取 payload
 
     生产模式：
         - 没有 token → 401
-        - token 过期 / 签名错 / 格式错 → 401
-        - 解析成功 → 返回 UserInfo(user_id, tenant_id, role)
+        - token 过期 / 签名错 / 格式错 / key 失效 → 401
+        - 校验成功 → 返回 UserInfo(user_id, tenant_id, role)
 
     开发模式（Settings.dev_mode=True）：
         - 没有 token → 返回默认租户的 owner（方便本地调试）
-        - 有 token 就真的 decode
+        - 有 token 就真的校验
     """
     # 开发模式：没有 token 也放行
     if authorization is None:
@@ -113,7 +119,21 @@ def get_current_user(
             detail="invalid authorization header",
         )
 
-    # 真 decode
+    # API Key 双轨：hk_ 前缀 → 哈希查表（JWT 是三段 base64，必然不带 hk_ 前缀）
+    from harness.platform.service.api_key_service import API_KEY_PREFIX
+
+    if token.startswith(API_KEY_PREFIX):
+        from harness.platform.service.api_key_service import authenticate_key
+
+        user = await authenticate_key(db, token)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid or revoked api key",
+            )
+        return user
+
+    # 用户 JWT 轨
     from harness.platform.auth.jwt import decode_access_token
     payload = decode_access_token(token)
     if payload is None:
