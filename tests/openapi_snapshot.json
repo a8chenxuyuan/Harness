@@ -2970,7 +2970,7 @@
     },
     "/api/v1/sessions": {
       "get": {
-        "description": "分页列出当前用户的会话（创建时间倒序）。",
+        "description": "分页列出当前用户的会话（创建时间倒序），支持状态过滤。",
         "operationId": "list_sessions_api_v1_sessions_get",
         "parameters": [
           {
@@ -2994,6 +2994,25 @@
               "minimum": 1,
               "title": "Size",
               "type": "integer"
+            }
+          },
+          {
+            "description": "按状态过滤；不传或 all 表示全部",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(active|archived|all)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "按状态过滤；不传或 all 表示全部",
+              "title": "Status"
             }
           },
           {
@@ -3213,6 +3232,66 @@
           }
         },
         "summary": "Get Session",
+        "tags": [
+          "v1",
+          "sessions"
+        ]
+      }
+    },
+    "/api/v1/sessions/{session_id}/archive": {
+      "post": {
+        "description": "归档会话（从默认工作列表移出，消息保留）。",
+        "operationId": "archive_session_api_v1_sessions__session_id__archive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_SessionResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Archive Session",
         "tags": [
           "v1",
           "sessions"
@@ -3507,6 +3586,66 @@
         "tags": [
           "v1",
           "messages"
+        ]
+      }
+    },
+    "/api/v1/sessions/{session_id}/unarchive": {
+      "post": {
+        "description": "恢复已归档会话。",
+        "operationId": "unarchive_session_api_v1_sessions__session_id__unarchive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_SessionResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unarchive Session",
+        "tags": [
+          "v1",
+          "sessions"
         ]
       }
     },

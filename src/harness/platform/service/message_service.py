@@ -21,6 +21,7 @@ from harness.platform.repository.session_message_repository import (
     SessionMessageRepository,
 )
 from harness.platform.repository.session_repository import SessionRepository
+from harness.platform.service.session_title import build_title, needs_auto_title
 
 
 class MessageService:
@@ -77,6 +78,12 @@ class MessageService:
             created_at=now,
         )
         await self.messages.save(message)
+
+        # 首条用户消息自动补标题：仅替换占位标题，不覆盖用户自定义命名
+        if req.role == "user" and needs_auto_title(record.title):
+            generated = build_title(text)
+            if generated:
+                record.title = generated
 
         record.message_count = await self.messages.count_by_session(
             self.user.tenant_id, session_id

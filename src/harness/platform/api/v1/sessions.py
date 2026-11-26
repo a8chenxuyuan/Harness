@@ -32,12 +32,17 @@ async def create_session(
 async def list_sessions(
     page: int = Query(default=1, ge=1),
     size: int = Query(default=20, ge=1, le=100),
+    status: str | None = Query(
+        default=None,
+        pattern="^(active|archived|all)$",
+        description="按状态过滤；不传或 all 表示全部",
+    ),
     user: UserInfo = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """分页列出当前用户的会话（创建时间倒序）。"""
+    """分页列出当前用户的会话（创建时间倒序），支持状态过滤。"""
     from harness.platform.service.session_service import SessionService
-    result = await SessionService(user, db).list_sessions(page, size)
+    result = await SessionService(user, db).list_sessions(page, size, status)
     return {"code": 0, "message": "ok", "data": result}
 
 
@@ -50,6 +55,54 @@ async def get_session(
     """获取指定会话详情（租户隔离）。"""
     from harness.platform.service.session_service import SessionService
     result = await SessionService(user, db).get_session(session_id)
+    return {"code": 0, "message": "ok", "data": result}
+
+
+@router.post(
+    "/{session_id}/archive", response_model=ApiResponse[SessionResponse]
+)
+async def archive_session(
+    session_id: str,
+    user: UserInfo = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """归档会话（从默认工作列表移出，消息保留）。"""
+    from harness.platform.auth.audit import record_audit
+    from harness.platform.service.session_service import SessionService
+
+    result = await SessionService(user, db).archive_session(session_id)
+    await record_audit(
+        db,
+        tenant_id=user.tenant_id,
+        user_id=user.user_id,
+        action="session.archive",
+        target=session_id,
+    )
+    return {"code": 0, "message": "ok", "data": result}
+
+
+@router.post(
+    "/{session_id}/unarchive", response_model=ApiResponse[SessionResponse]
+)
+async def unarchive_session(
+    session_id: str,
+    user: UserInfo = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """恢复已归档会话。"""
+    from harness.platform.auth.audit import record_audit
+    from harness.platform.service.session_service import SessionService
+
+    result = await SessionService(user, db).archive_session(
+        session_id, archived=False
+    )
+    await record_audit(
+        db,
+        tenant_id=user.tenant_id,
+        user_id=user.user_id,
+        action="session.unarchive",
+        target=session_id,
+    )
     return {"code": 0, "message": "ok", "data": result}
 
 
