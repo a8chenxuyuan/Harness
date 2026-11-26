@@ -1,12 +1,5 @@
 /** 会话消息接口：读取消息列表 / 发送消息（同步或 SSE 流式）。 */
 import { ApiError, get, post, TOKEN_KEY } from "./http";
-import { mockCancelStreamRun } from "./mock";
-import {
-  mockBranchMessage,
-  mockListMessages,
-  mockRetryMessage,
-  mockSendMessage,
-} from "./mock-messages";
 import type {
   ChatMessageListData,
   MessageBranchData,
@@ -18,15 +11,12 @@ import type {
   StreamToolData,
 } from "./types";
 
-const useMock = import.meta.env.VITE_USE_MOCK === "true";
-
 /** GET /sessions/{id}/messages?after_seq=&limit= */
 export async function listMessages(
   sessionId: string,
   afterSeq = 0,
   limit = 50,
 ): Promise<ChatMessageListData> {
-  if (useMock) return mockListMessages(sessionId, afterSeq, limit);
   return get<ChatMessageListData>(`/sessions/${sessionId}/messages`, {
     after_seq: afterSeq,
     limit,
@@ -40,7 +30,6 @@ export async function listMessages(
  * 避免前端分别写消息与运行记录造成顺序不一致。
  */
 export async function sendMessage(sessionId: string, text: string): Promise<RunData> {
-  if (useMock) return mockSendMessage(sessionId, text);
   return post<RunData>("/agents/run", {
     goal: text,
     mode: "single",
@@ -95,12 +84,6 @@ export async function streamMessage(
   handlers: StreamHandlers,
   signal?: AbortSignal,
 ): Promise<void> {
-  if (useMock) {
-    const result = await mockSendMessage(sessionId, text);
-    handlers.onDelta?.(String(result.output ?? ""));
-    return;
-  }
-
   const baseURL = import.meta.env.VITE_API_BASE || "/api/v1";
   const token = localStorage.getItem(TOKEN_KEY);
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -150,7 +133,6 @@ export async function streamMessage(
 
 /** POST /agents/runs/{run_id}/cancel（协作式取消） */
 export async function cancelStreamRun(runId: string): Promise<StreamCancelData> {
-  if (useMock) return mockCancelStreamRun(runId);
   return post<StreamCancelData>(`/agents/runs/${runId}/cancel`);
 }
 
@@ -159,7 +141,6 @@ export async function retryMessage(
   sessionId: string,
   messageId: string,
 ): Promise<MessageRetryData> {
-  if (useMock) return mockRetryMessage(sessionId, messageId);
   return post<MessageRetryData>(
     `/sessions/${sessionId}/messages/${messageId}/retry`,
   );
@@ -170,7 +151,6 @@ export async function branchMessage(
   sessionId: string,
   messageId: string,
 ): Promise<MessageBranchData> {
-  if (useMock) return mockBranchMessage(sessionId, messageId);
   return post<MessageBranchData>(
     `/sessions/${sessionId}/messages/${messageId}/branch`,
   );
