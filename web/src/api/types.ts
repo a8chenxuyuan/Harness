@@ -142,3 +142,35 @@ export interface MessageBranchData {
   title: string;
   message_count: number;
 }
+
+/** 审计日志筛选参数。 */
+export interface AuditQuery {
+  page?: number;
+  size?: number;
+  action?: string;
+  user_id?: string;
+  session_id?: string;
+  result?: string;
+  since?: string;
+  until?: string;
+}
+
+/** 单条审计日志（detail 为对象，created_at 为 ISO UTC）。 */
+export interface AuditLogItem {
+  id: number;
+  user_id: string;
+  session_id: string | null;
+  action: string;
+  target: string;
+  result: string;
+  detail: Record<string, unknown>;
+  created_at: string;
+}
+
+/** GET /api/v1/audit-logs 响应。 */
+export interface AuditLogListData {
+  items: AuditLogItem[];
+  total: number;
+  page: number;
+  size: number;
+}

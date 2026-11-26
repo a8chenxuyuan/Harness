@@ -32,6 +32,14 @@
       <div class="nav-item" @click="notReady('Worker')"><span class="ico">⇄</span>Worker</div>
 
       <div class="nav-label">系统</div>
+      <RouterLink
+        v-if="canAudit"
+        class="nav-item"
+        :class="{ active: isActive('audit') }"
+        to="/audit"
+      >
+        <span class="ico">▤</span>审计日志
+      </RouterLink>
       <div class="nav-item" @click="notReady('可观测')"><span class="ico">◎</span>可观测</div>
       <div class="nav-item" @click="notReady('设置')"><span class="ico">⚙</span>设置</div>
 
@@ -84,6 +92,9 @@ const theme = ref(localStorage.getItem("harness.theme") ?? "dark");
 const title = computed(() => String(route.meta.title ?? "概览"));
 const tenant = computed(() => auth.user?.tenant_id ?? "dev-tenant");
 const initials = computed(() => (auth.user?.user_id ?? "NA").slice(0, 2).toUpperCase());
+const canAudit = computed(
+  () => auth.user?.role === "owner" || auth.user?.role === "admin",
+);
 
 /** 当前导航项是否命中（详情页高亮"会话"）。 */
 function isActive(name: string): boolean {
