@@ -88,6 +88,85 @@ class MessageService:
         return self._to_response(message)
 
     # ------------------------------------------------------------------
+    # 流式消息（SSE 增量落库）
+    # ------------------------------------------------------------------
+
+    async def ensure_session(self, session_id: str) -> None:
+        """校验会话存在且属于当前用户；不存在时抛 404。"""
+        await self._require_session(session_id)
+
+    async def start_streaming_message(
+        self, session_id: str, *, parent_id: str | None = None
+    ) -> SessionMessage:
+        """创建 assistant 流式占位消息（status=streaming），并刷新会话计数。"""
+        record = await self._require_session(session_id)
+        seq = await self.messages.next_seq(self.user.tenant_id, session_id)
+        now = datetime.now(timezone.utc)
+        message = SessionMessage(
+            id=f"msg-{session_id}-{seq}",
+            session_id=session_id,
+            tenant_id=self.user.tenant_id,
+            user_id=self.user.user_id,
+            role="assistant",
+            parts=[],
+            text="",
+            seq=seq,
+            parent_id=parent_id,
+            status="streaming",
+            created_at=now,
+        )
+        await self.messages.save(message)
+
+        record.message_count = await self.messages.count_by_session(
+            self.user.tenant_id, session_id
+        )
+        record.last_message_at = now
+        record.updated_at = now
+        await self.sessions.save(record)
+        return message
+
+    async def update_streaming_message(
+        self,
+        message: SessionMessage,
+        *,
+        text: str,
+        parts: list[dict],
+        status: str | None = None,
+    ) -> None:
+        """增量刷新流式消息的文本 / 内容块（节流由调用方控制）。
+
+        parts 必须复制一份：若直接复用同一个列表对象原地追加，
+        SQLAlchemy 不会把该列标记为脏数据，导致内容块刷不进库。
+        """
+        message.text = text
+        message.parts = [dict(part) for part in parts]
+        if status is not None:
+            message.status = status
+        await self.messages.save(message)
+
+    async def finish_streaming_message(
+        self,
+        message: SessionMessage,
+        *,
+        text: str,
+        parts: list[dict],
+        status: str,
+    ) -> MessageResponse:
+        """流式结束：落终态（completed / failed）并刷新会话活跃时间。"""
+        await self.update_streaming_message(
+            message, text=text, parts=parts, status=status
+        )
+        record = await self.sessions.get_by_owner(
+            self.user.tenant_id, self.user.user_id, message.session_id
+        )
+        if record is not None:
+            now = datetime.now(timezone.utc)
+            record.last_message_at = now
+            record.updated_at = now
+            await self.sessions.save(record)
+        return self._to_response(message)
+
+    # ------------------------------------------------------------------
     # 内部
     # ------------------------------------------------------------------
 

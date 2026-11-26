@@ -1633,6 +1633,65 @@
         ]
       }
     },
+    "/api/v1/agents/run/stream": {
+      "post": {
+        "description": "流式运行单 Agent，按 SSE 推送增量事件。",
+        "operationId": "run_agent_stream_api_v1_agents_run_stream_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Agent Stream",
+        "tags": [
+          "v1",
+          "agents"
+        ]
+      }
+    },
     "/api/v1/agents/{agent_id}/cancel": {
       "post": {
         "description": "请求取消后台运行；已结束或不存在时回落到 plans 表状态。",

@@ -39,8 +39,6 @@ from .streaming import (
     _append_assistant,
     _assemble_tool_calls,
     _execute_tool_safely,
-    _new_tool_call_fragments,
-    _new_tool_call_meta,
 )
 
 if TYPE_CHECKING:
@@ -62,8 +60,8 @@ async def schedule_overlapped_tools(
     """
     queue: asyncio.Queue[tuple[int, ToolCall] | None] = asyncio.Queue()
     sem = asyncio.Semaphore(concurrency)
-    tool_json_fragments = _new_tool_call_fragments()
-    tool_call_meta = _new_tool_call_meta()
+    tool_json_fragments: dict[int, list[str]] = {}
+    tool_call_meta: dict[int, ToolCall] = {}
     enqueued: set[int] = set()
 
     async def _consumer() -> None:
@@ -185,8 +183,8 @@ async def execute_with_overlap(
     while not state.should_stop:
         opts = GenerateOptions()
         text_parts: list[str] = []
-        tool_json_fragments = _new_tool_call_fragments()
-        tool_call_meta = _new_tool_call_meta()
+        tool_json_fragments: dict[int, list[str]] = {}
+        tool_call_meta: dict[int, ToolCall] = {}
         last_finish_reason = "stop"
         round_usage = Usage()
 

@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from harness.core.tool.registry import ToolRegistry
 
 from .state import AgentState
+from .stream_payloads import tool_end_payload, tool_start_payload
 
 # ---------------------------------------------------------------------------
 # 事件类型常量
@@ -61,16 +62,6 @@ class LoopStreamEvent:
 # ---------------------------------------------------------------------------
 # 内部辅助
 # ---------------------------------------------------------------------------
-
-
-def _new_tool_call_fragments() -> dict[int, list[str]]:
-    """初始化 tool_call delta 累积器。"""
-    return {}
-
-
-def _new_tool_call_meta() -> dict[int, ToolCall]:
-    """初始化 tool_call 元信息累积器（id / name 按 index）。"""
-    return {}
 
 
 def _assemble_tool_calls(
@@ -184,8 +175,8 @@ async def run_with_stream(
     while not state.should_stop:
         opts = GenerateOptions()
         text_parts: list[str] = []
-        tool_json_fragments = _new_tool_call_fragments()
-        tool_call_meta = _new_tool_call_meta()
+        tool_json_fragments: dict[int, list[str]] = {}
+        tool_call_meta: dict[int, ToolCall] = {}
         last_finish_reason = "stop"
         round_usage = Usage()
 
@@ -257,12 +248,14 @@ async def run_with_stream(
         if tool_calls:
             yield LoopStreamEvent(
                 event_type=EVENT_TOOL_START,
-                payload={"tool_count": len(tool_calls), "step": state.step},
+                payload=tool_start_payload(tool_calls, state.step),
             )
-            await _execute_tool_list_serial(state, registry, budget, tool_calls)
+            results = await _execute_tool_list_serial(
+                state, registry, budget, tool_calls
+            )
             yield LoopStreamEvent(
                 event_type=EVENT_TOOL_END,
-                payload={"tool_count": len(tool_calls), "step": state.step},
+                payload=tool_end_payload(results, state.step),
             )
         else:
             # 助手没发 tool_call → 正常结束，必须置终止信号

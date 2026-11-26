@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from .agent_stream import router as agent_stream_router
 from .agents import router as agents_router
 from .auth import router as auth_router
 from .channels import router as channels_router
@@ -24,6 +25,7 @@ from .tools import router as tools_router
 api_v1 = APIRouter(prefix="/api/v1", tags=["v1"])
 api_v1.include_router(health_router)
 api_v1.include_router(auth_router)
+api_v1.include_router(agent_stream_router)
 api_v1.include_router(agents_router)
 api_v1.include_router(plans_router)
 api_v1.include_router(sessions_router)
