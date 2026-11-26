@@ -51,11 +51,13 @@ def build_default_model() -> Any:
     if provider == "anthropic":
         from harness.core.model.anthropic import AnthropicModel
 
-        return AnthropicModel(
+        inner = AnthropicModel(
             api_key=cfg.api_key,
             model=model_name,
             base_url=cfg.base_url or "https://api.anthropic.com",
+            timeout=cfg.timeout,
         )
+        return _with_resilience(inner, cfg)
 
     base_url = (cfg.base_url or DEFAULT_BASE_URLS.get(provider, "")).strip()
     if not base_url:
@@ -64,10 +66,26 @@ def build_default_model() -> Any:
         )
     from harness.core.model.openai_compat import OpenAICompat
 
-    return OpenAICompat(
+    inner = OpenAICompat(
         base_url=base_url,
         api_key=cfg.api_key or None,
         model=model_name,
+        timeout=cfg.timeout,
+    )
+    return _with_resilience(inner, cfg)
+
+
+def _with_resilience(model: Any, cfg: Any) -> Any:
+    """给底层模型套上超时 / 重试 / 熔断（W3-KERN-03）。"""
+    from harness.core.model.resilient import ResilientModel
+
+    return ResilientModel(
+        model,
+        timeout=cfg.timeout,
+        retries=cfg.retries,
+        backoff=cfg.backoff,
+        circuit_threshold=cfg.circuit_threshold,
+        circuit_cooldown=cfg.circuit_cooldown,
     )
 
 

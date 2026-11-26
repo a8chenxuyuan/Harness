@@ -20,6 +20,7 @@ from .plans import router as plans_router
 from .runs import router as runs_router
 from .sessions import router as sessions_router
 from .steer import router as steer_router
+from .tenant import router as tenant_router
 from .tools import router as tools_router
 
 api_v1 = APIRouter(prefix="/api/v1", tags=["v1"])
@@ -36,5 +37,6 @@ api_v1.include_router(hitl_router)
 api_v1.include_router(tools_router)
 api_v1.include_router(observability_router)
 api_v1.include_router(channels_router)
+api_v1.include_router(tenant_router)
 
 __all__ = ["api_v1"]

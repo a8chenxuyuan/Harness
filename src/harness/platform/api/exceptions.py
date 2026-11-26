@@ -49,6 +49,14 @@ class BizError(Exception):
         return 400
 
 
+class RateLimitError(BizError):
+    """限流异常：固定 429，并携带 Retry-After 响应头。"""
+
+    def __init__(self, message: str, *, retry_after: float = 1.0) -> None:
+        super().__init__(429, message)
+        self.retry_after = max(1, int(retry_after + 0.999))
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     """在 FastAPI app 上注册所有异常处理器。
 
@@ -64,6 +72,15 @@ def register_exception_handlers(app: FastAPI) -> None:
             content=ApiErrorResponse(
                 code=exc.code, message=exc.message, detail=exc.detail
             ).model_dump(),
+        )
+
+    @app.exception_handler(RateLimitError)
+    async def _rate_limit_handler(request: Request, exc: RateLimitError) -> JSONResponse:
+        log.warning("RateLimitError: msg=%s retry_after=%s", exc.message, exc.retry_after)
+        return JSONResponse(
+            status_code=429,
+            content=ApiErrorResponse(code=429, message=exc.message).model_dump(),
+            headers={"Retry-After": str(exc.retry_after)},
         )
 
     @app.exception_handler(HTTPException)
@@ -85,4 +102,4 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
 
 
-__all__ = ["BizError", "register_exception_handlers"]
+__all__ = ["BizError", "RateLimitError", "register_exception_handlers"]

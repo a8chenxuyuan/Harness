@@ -15,6 +15,7 @@ from harness.platform.api.vo.message_vo import (
     MessageResponse,
     MessageRetryResponse,
 )
+from harness.platform.service.rate_limit import message_rate_limit
 
 router = APIRouter(prefix="/sessions/{session_id}/messages", tags=["messages"])
 
@@ -42,6 +43,7 @@ async def create_message(
     req: MessageCreateRequest,
     user: UserInfo = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _rate: None = Depends(message_rate_limit),
 ) -> dict:
     """追加一条消息，并刷新会话的 message_count / last_message_at。"""
     from harness.platform.auth.audit import record_audit

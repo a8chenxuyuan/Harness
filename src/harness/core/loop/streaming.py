@@ -114,7 +114,11 @@ async def _execute_tool_safely(
 
     start = time.monotonic()
     try:
-        result = await tool.execute(**call.arguments)
+        from harness.common.observability.tracing import start_span
+
+        with start_span("tool.execute", {"tool": call.name}) as span:
+            result = await tool.execute(**call.arguments)
+            span.set_attribute("ok", bool(getattr(result, "ok", False)))
     except Exception as exc:  # noqa: BLE001 - 工具抛什么都要吞掉
         elapsed_ms = (time.monotonic() - start) * 1000
         budget.record_dedup(

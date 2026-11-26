@@ -58,6 +58,22 @@ class PlanRepository:
         )
         return _count_of(result.all())
 
+    async def mark_statuses(self, from_status: str, to_status: str) -> int:
+        """批量把 ``from_status`` 的计划改为 ``to_status``，返回影响行数。
+
+        启动恢复用：后台执行随进程终止，running 计划统一标记 interrupted。
+        """
+        from datetime import datetime, timezone
+        from sqlalchemy import update
+
+        result = await self.session.exec(
+            update(PlanRecord)
+            .where(PlanRecord.status == from_status)
+            .values(status=to_status, updated_at=datetime.now(timezone.utc))
+        )
+        await self.session.commit()
+        return int(result.rowcount or 0)
+
     async def update_status(self, record: PlanRecord, status: str) -> PlanRecord:
         """更新执行状态（running / done / failed / cancelled）。"""
         from datetime import datetime, timezone

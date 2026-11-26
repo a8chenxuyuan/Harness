@@ -1,0 +1,102 @@
+groups:
+  - name: harness-reliability
+    rules:
+      - alert: HarnessHighErrorRate
+        expr: |
+          sum(rate(harness_http_requests_total{status=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(harness_http_requests_total[5m])), 1e-9)
+          > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: harness
+        annotations:
+          summary: "Harness HTTP 5xx 比例超过 5%"
+          description: "近 5 分钟 5xx 占比 {{ $value | humanizePercentage }}，检查 /metrics 与错误日志。"
+          runbook: "ops/runbook.md#harnesshigherrorrate"
+
+      - alert: HarnessHighLatencyP95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(harness_http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 10
+        for: 10m
+        labels:
+          severity: warning
+          service: harness
+        annotations:
+          summary: "Harness HTTP P95 延迟超过 10 秒"
+          description: "近 10 分钟 P95={{ $value | humanizeDuration }}，优先排查模型调用与数据库慢查询。"
+          runbook: "ops/runbook.md#harnesshighlatencyp95"
+
+      - alert: HarnessRateLimitBurst
+        expr: sum(rate(harness_rate_limited_total[5m])) > 1
+        for: 10m
+        labels:
+          severity: warning
+          service: harness
+        annotations:
+          summary: "限流触发频率持续偏高"
+          description: "近 10 分钟平均每秒超过 1 次 429，检查是否有客户端重试风暴或恶意刷接口。"
+          runbook: "ops/runbook.md#harnessratelimitburst"
+
+      - alert: HarnessModelRetryStorm
+        expr: sum(rate(harness_model_retry_total[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          service: harness
+        annotations:
+          summary: "模型调用重试次数异常升高"
+          description: "近 5 分钟重试速率 {{ $value | humanize }}/s，检查上游模型可用性与超时配置。"
+          runbook: "ops/runbook.md#harnessmodelretrystorm"
+
+      - alert: HarnessModelCircuitOpen
+        expr: increase(harness_model_circuit_open_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: harness
+        annotations:
+          summary: "模型熔断器被打开"
+          description: "近 5 分钟有模型进入熔断冷却，期间请求会快速失败，确认上游故障范围。"
+          runbook: "ops/runbook.md#harnessmodelcircuitopen"
+
+      - alert: HarnessTTFTSlow
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(harness_ttft_seconds_bucket[5m])) by (le)
+          ) > 15
+        for: 10m
+        labels:
+          severity: warning
+          service: harness
+        annotations:
+          summary: "模型首 token 延迟 P95 超过 15 秒"
+          description: "用户已明显感知卡顿，检查模型供应商状态与网络。"
+          runbook: "ops/runbook.md#harnessttftslow"
+
+      - alert: HarnessSandboxViolation
+        expr: increase(harness_sandbox_violation_total[10m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: harness
+        annotations:
+          summary: "出现沙箱越界拦截"
+          description: "正常应恒为 0；立即核查触发 reason 与对应用户/会话。"
+          runbook: "ops/runbook.md#harnesssandboxviolation"
+
+      - alert: HarnessServiceDown
+        expr: up{job="harness"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: harness
+        annotations:
+          summary: "Harness 服务不可达"
+          description: "Prometheus 连续 2 分钟抓取失败，检查进程与 /metrics 端口。"
+          runbook: "ops/runbook.md#harnessservicedown"

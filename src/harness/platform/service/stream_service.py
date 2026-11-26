@@ -26,8 +26,15 @@ import json
 import logging
 import time
 import uuid
+from contextlib import ExitStack
 from datetime import datetime, timezone
 from typing import Any, AsyncIterator
+
+from harness.common.observability.context import (
+    bind_run_context,
+    reset_run_context,
+)
+from harness.common.observability.tracing import start_span
 
 from harness.core.loop.streaming import (
     EVENT_ERROR,
@@ -67,9 +74,16 @@ class ChatStreamService:
         self.messages = MessageService(user, db)
         self.runs = AgentRunRepository(db)
 
-    async def stream(self, session_id: str, goal: str) -> AsyncIterator[StreamEvent]:
-        """执行一次流式对话，按事件序列产出 StreamEvent。"""
-        run_id = f"run-{uuid.uuid4().hex[:12]}"
+    async def stream(
+        self, session_id: str, goal: str, run_id: str | None = None
+    ) -> AsyncIterator[StreamEvent]:
+        """执行一次流式对话，按事件序列产出 StreamEvent。
+
+        Args:
+            run_id: 可选的外部运行 id（幂等键场景由 Controller 预生成，
+                保证 409 冲突时能返回同一个 run_id）。
+        """
+        run_id = run_id or f"run-{uuid.uuid4().hex[:12]}"
         run_record = await self._create_run(run_id, goal, session_id)
 
         await self.messages.append_message(
@@ -96,6 +110,17 @@ class ChatStreamService:
         agent: Any = None
         cancel_registry = get_stream_cancel_registry()
         cancel_registry.register(run_id)
+        run_token = bind_run_context(
+            tenant_id=self.user.tenant_id,
+            user_id=self.user.user_id,
+            session_id=session_id,
+            run_id=run_id,
+            mode="single",
+        )
+        span_stack = ExitStack()
+        span_stack.enter_context(
+            start_span("agent.run.stream", {"mode": "single"})
+        )
 
         try:
             agent = self._build_agent(run_id)
@@ -190,7 +215,18 @@ class ChatStreamService:
             yield end_event(response, status, {}, error)
             return
         finally:
+            span_stack.close()
+            reset_run_context(run_token)
             cancel_registry.release(run_id)
+            try:
+                from harness.platform.service.quota_service import QuotaService
+
+                tokens = int(metrics.get("total_tokens") or 0)
+                await QuotaService(self.db).record_usage(
+                    self.user.tenant_id, messages=2, tokens=tokens
+                )
+            except Exception as exc:  # noqa: BLE001 — 用量累加失败不影响收尾
+                log.warning("ChatStreamService: 配额用量累加失败: %s", exc)
 
         response = await finalize_stream(
             self.user,

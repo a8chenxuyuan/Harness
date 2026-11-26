@@ -20,6 +20,7 @@ from harness.platform.api.vo.auth_vo import UserInfo
 from harness.platform.api.vo.envelope_vo import ApiResponse
 from harness.platform.api.vo.metrics_vo import MetricsSummary
 from harness.platform.service.audit_service import AuditService
+from harness.platform.service.rate_limit import audit_export_rate_limit
 
 router = APIRouter(tags=["observability"])
 
@@ -110,6 +111,7 @@ async def export_audit_logs(
     until: datetime | None = Query(default=None),
     user: UserInfo = Depends(require_role("owner", "admin")),
     db: AsyncSession = Depends(get_db),
+    _rate: None = Depends(audit_export_rate_limit),
 ) -> Response:
     """按过滤条件导出审计日志 CSV（最多 5000 行，UTF-8 BOM）。"""
     csv_text = await AuditService(user, db).export_csv(

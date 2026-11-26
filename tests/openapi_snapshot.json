@@ -1062,6 +1062,25 @@
         "title": "LoginResponse",
         "type": "object"
       },
+      "LogoutRequest": {
+        "description": "POST /api/v1/auth/logout 请求体（可选：传了才吊销 refresh token）。",
+        "properties": {
+          "refresh_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "要吊销的 refresh token",
+            "title": "Refresh Token"
+          }
+        },
+        "title": "LogoutRequest",
+        "type": "object"
+      },
       "MessageBranchResponse": {
         "description": "POST /messages/{id}/branch 响应体：新会话摘要与来源。",
         "properties": {
@@ -1461,6 +1480,52 @@
           "goal"
         ],
         "title": "PlanSummary",
+        "type": "object"
+      },
+      "QuotaUpdateRequest": {
+        "description": "PUT /api/v1/tenant/quotas 请求体（字段可选，未传保持不变）。",
+        "properties": {
+          "max_concurrent_runs": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Concurrent Runs"
+          },
+          "max_daily_messages": {
+            "anyOf": [
+              {
+                "maximum": 10000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Daily Messages"
+          },
+          "max_daily_tokens": {
+            "anyOf": [
+              {
+                "maximum": 10000000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Daily Tokens"
+          }
+        },
+        "title": "QuotaUpdateRequest",
         "type": "object"
       },
       "RecentHttpError": {
@@ -1990,9 +2055,27 @@
     },
     "/api/v1/agents/run": {
       "post": {
-        "description": "同步运行 Agent。\n\nmode=single 直接跑单 Agent；\nmode=coordinator 走 Plan → Review → Executor 完整多 Agent 链路。",
+        "description": "同步运行 Agent。\n\nmode=single 直接跑单 Agent；\nmode=coordinator 走 Plan → Review → Executor 完整多 Agent 链路。\n传 ``Idempotency-Key`` 时：同 key + 同请求体重复调用直接回放上次结果。",
         "operationId": "run_agent_api_v1_agents_run_post",
         "parameters": [
+          {
+            "description": "幂等键（可选）",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "幂等键（可选）",
+              "title": "Idempotency-Key"
+            }
+          },
           {
             "in": "header",
             "name": "authorization",
@@ -2051,9 +2134,27 @@
     },
     "/api/v1/agents/run/stream": {
       "post": {
-        "description": "流式运行单 Agent，按 SSE 推送增量事件。",
+        "description": "流式运行单 Agent，按 SSE 推送增量事件。\n\n传 ``Idempotency-Key`` 时：同 key 重复请求直接 409 + run_id（流式不缓存回放）。",
         "operationId": "run_agent_stream_api_v1_agents_run_stream_post",
         "parameters": [
+          {
+            "description": "幂等键（可选）",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "幂等键（可选）",
+              "title": "Idempotency-Key"
+            }
+          },
           {
             "in": "header",
             "name": "authorization",
@@ -2775,7 +2876,7 @@
     },
     "/api/v1/auth/logout": {
       "post": {
-        "description": "登出。无 Redis 黑名单时只写审计并返回成功（token 由客户端丢弃）。",
+        "description": "登出：吊销传入的 refresh token（不传则只写审计）。",
         "operationId": "logout_api_v1_auth_logout_post",
         "parameters": [
           {
@@ -2795,6 +2896,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/LogoutRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Req"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -4342,6 +4460,116 @@
         "tags": [
           "v1",
           "steering"
+        ]
+      }
+    },
+    "/api/v1/tenant/quotas": {
+      "get": {
+        "description": "查看当前租户配额、当日用量与并发数。",
+        "operationId": "get_quotas_api_v1_tenant_quotas_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_dict_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Quotas",
+        "tags": [
+          "v1",
+          "tenant"
+        ]
+      },
+      "put": {
+        "description": "调整当前租户配额（仅 owner / admin）。",
+        "operationId": "update_quotas_api_v1_tenant_quotas_put",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuotaUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_dict_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Quotas",
+        "tags": [
+          "v1",
+          "tenant"
         ]
       }
     },

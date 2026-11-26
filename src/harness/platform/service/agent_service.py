@@ -41,17 +41,61 @@ class AgentService:
         mode: str = "single",
         conversation_id: str | None = None,
     ) -> dict[str, Any]:
+        """运行 Agent（绑定链路上下文 + agent.run span 后转交内部实现）。"""
+        from harness.common.observability.context import (
+            bind_run_context,
+            reset_run_context,
+        )
+        from harness.common.observability.tracing import start_span
+
+        run_id = f"run-{uuid.uuid4().hex[:12]}"
+        token = bind_run_context(
+            tenant_id=self.user.tenant_id,
+            user_id=self.user.user_id,
+            session_id=conversation_id,
+            run_id=run_id,
+            mode=mode,
+        )
+        try:
+            with start_span("agent.run", {"mode": mode}) as span:
+                result = await self._run_inner(
+                    goal=goal,
+                    mode=mode,
+                    conversation_id=conversation_id,
+                    run_id=run_id,
+                )
+                span.set_attribute("status", str(result.get("status") or ""))
+                return result
+        finally:
+            reset_run_context(token)
+
+    async def _run_inner(
+        self,
+        *,
+        goal: str,
+        mode: str = "single",
+        conversation_id: str | None = None,
+        run_id: str | None = None,
+    ) -> dict[str, Any]:
         """运行 Agent 并持久化运行记录。
 
         Args:
             goal: 人类可读的目标描述。
             mode: "single" 直接跑单 Agent；"coordinator" 走 Plan→Review→Executor。
             conversation_id: 续跑时传已有会话 id；存在时会落对话消息。
+            run_id: 预生成的运行 id（链路上下文需要提前绑定）。
 
         Returns:
             {"run_id", "status", "output", "metrics"} —— 正好是 AgentRunResponse 的字段。
         """
-        run_id = f"run-{uuid.uuid4().hex[:12]}"
+        run_id = run_id or f"run-{uuid.uuid4().hex[:12]}"
+        # 配额检查：并发 / 当日消息 / 当日 token，超限直接 429 不创建运行记录
+        from harness.platform.service.quota_service import QuotaService
+
+        quota = QuotaService(self.db)
+        await quota.ensure_available(self.user.tenant_id)
+        await quota.record_run_started(self.user.tenant_id)
+
         record = await self._create_run(run_id, goal, mode, conversation_id)
         try:
             await self._append_user_message(conversation_id, goal)
@@ -80,6 +124,7 @@ class AgentService:
             )
             await self._append_assistant_message(conversation_id, result.get("output"))
 
+        await self._record_quota_usage(result, conversation_id)
         return result
 
     # ------------------------------------------------------------------
@@ -188,6 +233,24 @@ class AgentService:
         record.finished_at = now
         record.updated_at = now
         await self.runs.save(record)
+
+    async def _record_quota_usage(
+        self, result: dict[str, Any], conversation_id: str | None
+    ) -> None:
+        """累加当日用量（失败只记录日志，不影响运行结果）。"""
+        try:
+            metrics = result.get("metrics") or {}
+            tokens = int(metrics.get("total_tokens") or 0)
+            messages = 0
+            if conversation_id:
+                messages = 2 if result.get("output") else 1
+            from harness.platform.service.quota_service import QuotaService
+
+            await QuotaService(self.db).record_usage(
+                self.user.tenant_id, messages=messages, tokens=tokens
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("AgentService: 配额用量累加失败: %s", exc)
 
     async def _append_user_message(
         self, conversation_id: str | None, goal: str

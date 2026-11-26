@@ -69,3 +69,45 @@ class AgentRunRepository(BaseRepository):
             )
         )
         return result.first()
+
+    async def count_active(self, tenant_id: str) -> int:
+        """统计租户当前活跃运行数（queued / running）。"""
+        from sqlalchemy import func, select
+
+        Record = self.model
+        result = await self.session.exec(
+            select(func.count()).select_from(Record).where(
+                Record.tenant_id == tenant_id,
+                Record.status.in_(("queued", "running")),  # type: ignore[attr-defined]
+            )
+        )
+        rows = result.all()
+        if not rows:
+            return 0
+        value = rows[0]
+        return int(value) if isinstance(value, (int, float)) else int(value[0])
+
+    async def mark_statuses(
+        self, from_status: str, to_status: str, *, error: str | None = None
+    ) -> int:
+        """批量把 ``from_status`` 的运行改为 ``to_status``，返回影响行数。
+
+        启动恢复用：进程重启后 running 记录已不可能继续执行，统一标记
+        interrupted，避免列表长期展示「运行中」。
+        """
+        from datetime import datetime, timezone
+        from sqlalchemy import update
+
+        Record = self.model
+        values: dict = {
+            "status": to_status,
+            "updated_at": datetime.now(timezone.utc),
+            "finished_at": datetime.now(timezone.utc),
+        }
+        if error is not None:
+            values["error"] = error
+        result = await self.session.exec(
+            update(Record).where(Record.status == from_status).values(**values)
+        )
+        await self.session.commit()
+        return int(result.rowcount or 0)

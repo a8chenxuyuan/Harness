@@ -11,9 +11,15 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from harness.platform.api.deps import get_current_user, get_db
-from harness.platform.api.dto.auth_dto import LoginRequest, RefreshRequest, RegisterRequest
+from harness.platform.api.dto.auth_dto import (
+    LoginRequest,
+    LogoutRequest,
+    RefreshRequest,
+    RegisterRequest,
+)
 from harness.platform.api.vo.auth_vo import LoginResponse, UserInfo
 from harness.platform.api.vo.envelope_vo import ApiResponse
+from harness.platform.service.rate_limit import login_rate_limit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -44,7 +50,11 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)) -> 
 
 
 @router.post("/login", response_model=ApiResponse[LoginResponse])
-async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)) -> dict:
+async def login(
+    req: LoginRequest,
+    _rate: None = Depends(login_rate_limit),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
     """用户登录（username + password → access/refresh token）。"""
     from harness.platform.auth.audit import record_audit
     from harness.platform.service.auth_service import AuthService
@@ -84,19 +94,29 @@ async def refresh_token(
 
 @router.post("/logout", response_model=ApiResponse[dict])
 async def logout(
+    req: LogoutRequest | None = None,
     user: UserInfo = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """登出。无 Redis 黑名单时只写审计并返回成功（token 由客户端丢弃）。"""
+    """登出：吊销传入的 refresh token（不传则只写审计）。"""
     from harness.platform.auth.audit import record_audit
+    from harness.platform.service.auth_service import AuthService
 
+    revoked = await AuthService(db).revoke_refresh_token(
+        req.refresh_token if req else None
+    )
     await record_audit(
         db,
         tenant_id=user.tenant_id,
         user_id=user.user_id,
         action="auth.logout",
+        result="success" if revoked else "noop",
     )
-    return {"code": 0, "message": "ok", "data": {"user_id": user.user_id}}
+    return {
+        "code": 0,
+        "message": "ok",
+        "data": {"user_id": user.user_id, "refresh_revoked": revoked},
+    }
 
 
 @router.get("/me", response_model=ApiResponse[UserInfo])

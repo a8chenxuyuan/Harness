@@ -32,6 +32,11 @@ class ModelSettings(BaseModel):
             真实 gateway 收到无 key 时直接报错返回 401。
         model: 模型名（如 deepseek-chat、gpt-4o-mini、claude-3-5-sonnet-latest）。
             空串时由 provider 推断一个合理默认值。
+        timeout: 单次流式分块等待超时（秒）。
+        retries: 首块产出前的最大重试次数（首块后失败不重试，避免重复输出）。
+        backoff: 重试退避基数（秒），按 2 的幂递增。
+        circuit_threshold: 连续失败多少次后打开熔断器。
+        circuit_cooldown: 熔断打开后的冷却时间（秒），到期进入半开重试。
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -40,6 +45,11 @@ class ModelSettings(BaseModel):
     base_url: str = ""
     api_key: str = ""
     model: str = ""
+    timeout: float = 60.0
+    retries: int = 2
+    backoff: float = 0.5
+    circuit_threshold: int = 5
+    circuit_cooldown: float = 30.0
 
     def has_credentials(self) -> bool:
         """是否配置了可工作的凭据（用于 examples 判断是否 skip）。"""
