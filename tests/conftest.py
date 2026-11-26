@@ -90,6 +90,27 @@ async def db_session():
 
 
 @pytest.fixture
+async def owner_headers(client, register_user, db_session):
+    """注册用户并提升为 owner，返回可访问运维接口的认证头。"""
+    from harness.platform.repository.user_repository import UserRepository
+    from harness.platform.service.auth_service import DEFAULT_TENANT_ID
+
+    username, password, _ = await register_user()
+    users = UserRepository(db_session)
+    user = await users.get_by_username(DEFAULT_TENANT_ID, username)
+    user.role = "owner"
+    await users.save(user)
+
+    login = await client.post(
+        "/api/v1/auth/login",
+        json={"username": username, "password": password},
+    )
+    assert login.status_code == 200, login.text
+    token = login.json()["data"]["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
 def user_info():
     """测试用登录用户（固定租户 + 独立 user_id）。"""
     from harness.platform.api.vo.auth_vo import UserInfo

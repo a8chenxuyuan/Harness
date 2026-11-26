@@ -525,6 +525,35 @@
         "title": "ApiResponse[MessageRetryResponse]",
         "type": "object"
       },
+      "ApiResponse_MetricsSummary_": {
+        "properties": {
+          "code": {
+            "default": 0,
+            "description": "业务码，0=成功",
+            "title": "Code",
+            "type": "integer"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricsSummary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "业务数据"
+          },
+          "message": {
+            "default": "ok",
+            "description": "状态描述",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[MetricsSummary]",
+        "type": "object"
+      },
       "ApiResponse_PlanListResponse_": {
         "properties": {
           "code": {
@@ -949,6 +978,33 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HttpStatusCounts": {
+        "description": "按状态类分组的请求数。",
+        "properties": {
+          "client_error": {
+            "default": 0,
+            "title": "Client Error",
+            "type": "integer"
+          },
+          "ok": {
+            "default": 0,
+            "title": "Ok",
+            "type": "integer"
+          },
+          "redirect": {
+            "default": 0,
+            "title": "Redirect",
+            "type": "integer"
+          },
+          "server_error": {
+            "default": 0,
+            "title": "Server Error",
+            "type": "integer"
+          }
+        },
+        "title": "HttpStatusCounts",
+        "type": "object"
+      },
       "LoginRequest": {
         "description": "POST /api/v1/auth/login 请求体。",
         "properties": {
@@ -1213,6 +1269,58 @@
         "title": "MessageRetryResponse",
         "type": "object"
       },
+      "MetricsSummary": {
+        "description": "GET /api/v1/observability/metrics 响应体。",
+        "properties": {
+          "avg_ms": {
+            "default": 0.0,
+            "title": "Avg Ms",
+            "type": "number"
+          },
+          "error_rate": {
+            "default": 0.0,
+            "title": "Error Rate",
+            "type": "number"
+          },
+          "error_requests": {
+            "default": 0,
+            "title": "Error Requests",
+            "type": "integer"
+          },
+          "p95_ms": {
+            "default": 0.0,
+            "title": "P95 Ms",
+            "type": "number"
+          },
+          "prometheus_available": {
+            "default": false,
+            "title": "Prometheus Available",
+            "type": "boolean"
+          },
+          "recent_errors": {
+            "items": {
+              "$ref": "#/components/schemas/RecentHttpError"
+            },
+            "title": "Recent Errors",
+            "type": "array"
+          },
+          "status_counts": {
+            "$ref": "#/components/schemas/HttpStatusCounts"
+          },
+          "total_requests": {
+            "default": 0,
+            "title": "Total Requests",
+            "type": "integer"
+          },
+          "uptime_seconds": {
+            "default": 0.0,
+            "title": "Uptime Seconds",
+            "type": "number"
+          }
+        },
+        "title": "MetricsSummary",
+        "type": "object"
+      },
       "PlanListResponse": {
         "description": "GET /plans 列表响应（分页）。",
         "properties": {
@@ -1353,6 +1461,45 @@
           "goal"
         ],
         "title": "PlanSummary",
+        "type": "object"
+      },
+      "RecentHttpError": {
+        "description": "最近一条失败请求（4xx / 5xx）。",
+        "properties": {
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "number"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "integer"
+          },
+          "time": {
+            "title": "Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "time",
+          "method",
+          "path",
+          "status",
+          "duration_ms",
+          "request_id"
+        ],
+        "title": "RecentHttpError",
         "type": "object"
       },
       "RefreshRequest": {
@@ -3065,6 +3212,57 @@
         "tags": [
           "v1",
           "health"
+        ]
+      }
+    },
+    "/api/v1/observability/metrics": {
+      "get": {
+        "description": "HTTP 指标摘要：请求量、错误率、延迟分位与最近错误。",
+        "operationId": "metrics_summary_api_v1_observability_metrics_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_MetricsSummary_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Metrics Summary",
+        "tags": [
+          "v1",
+          "observability"
         ]
       }
     },

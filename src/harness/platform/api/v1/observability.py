@@ -18,6 +18,7 @@ from harness.platform.api.deps import get_current_user, get_db, require_role
 from harness.platform.api.vo.audit_vo import AuditLogListResponse
 from harness.platform.api.vo.auth_vo import UserInfo
 from harness.platform.api.vo.envelope_vo import ApiResponse
+from harness.platform.api.vo.metrics_vo import MetricsSummary
 from harness.platform.service.audit_service import AuditService
 
 router = APIRouter(tags=["observability"])
@@ -50,6 +51,16 @@ async def ready(
             "checks": {"database": "ok", "tools": len(tools)},
         },
     }
+
+
+@router.get("/observability/metrics", response_model=ApiResponse[MetricsSummary])
+async def metrics_summary(
+    user: UserInfo = Depends(require_role("owner", "admin")),
+) -> dict[str, Any]:
+    """HTTP 指标摘要：请求量、错误率、延迟分位与最近错误。"""
+    from harness.common.observability.metrics import metrics_snapshot
+
+    return {"code": 0, "message": "ok", "data": metrics_snapshot()}
 
 
 @router.get("/audit-logs", response_model=ApiResponse[AuditLogListResponse])
