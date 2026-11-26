@@ -30,4 +30,28 @@ class MessageListResponse(BaseModel):
     has_more: bool = False
 
 
-__all__ = ["MessageResponse", "MessageListResponse"]
+class MessageRetryResponse(BaseModel):
+    """POST /messages/{id}/retry 响应体：返回原文与已软删的消息。"""
+
+    session_id: str
+    message_id: str
+    text: str = ""
+    removed_message_ids: list[str] = Field(default_factory=list)
+
+
+class MessageBranchResponse(BaseModel):
+    """POST /messages/{id}/branch 响应体：新会话摘要与来源。"""
+
+    session_id: str
+    source_session_id: str
+    source_message_id: str
+    title: str = ""
+    message_count: int = 0
+
+
+__all__ = [
+    "MessageResponse",
+    "MessageListResponse",
+    "MessageRetryResponse",
+    "MessageBranchResponse",
+]

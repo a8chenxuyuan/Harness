@@ -380,6 +380,35 @@
         "title": "ApiResponse[LoginResponse]",
         "type": "object"
       },
+      "ApiResponse_MessageBranchResponse_": {
+        "properties": {
+          "code": {
+            "default": 0,
+            "description": "业务码，0=成功",
+            "title": "Code",
+            "type": "integer"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MessageBranchResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "业务数据"
+          },
+          "message": {
+            "default": "ok",
+            "description": "状态描述",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[MessageBranchResponse]",
+        "type": "object"
+      },
       "ApiResponse_MessageListResponse_": {
         "properties": {
           "code": {
@@ -436,6 +465,35 @@
           }
         },
         "title": "ApiResponse[MessageResponse]",
+        "type": "object"
+      },
+      "ApiResponse_MessageRetryResponse_": {
+        "properties": {
+          "code": {
+            "default": 0,
+            "description": "业务码，0=成功",
+            "title": "Code",
+            "type": "integer"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MessageRetryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "业务数据"
+          },
+          "message": {
+            "default": "ok",
+            "description": "状态描述",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "title": "ApiResponse[MessageRetryResponse]",
         "type": "object"
       },
       "ApiResponse_PlanListResponse_": {
@@ -802,6 +860,40 @@
         "title": "LoginResponse",
         "type": "object"
       },
+      "MessageBranchResponse": {
+        "description": "POST /messages/{id}/branch 响应体：新会话摘要与来源。",
+        "properties": {
+          "message_count": {
+            "default": 0,
+            "title": "Message Count",
+            "type": "integer"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "source_message_id": {
+            "title": "Source Message Id",
+            "type": "string"
+          },
+          "source_session_id": {
+            "title": "Source Session Id",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "source_session_id",
+          "source_message_id"
+        ],
+        "title": "MessageBranchResponse",
+        "type": "object"
+      },
       "MessageCreateRequest": {
         "description": "POST /api/v1/sessions/{session_id}/messages 请求体。",
         "properties": {
@@ -835,7 +927,7 @@
           },
           "status": {
             "default": "completed",
-            "pattern": "^(streaming|completed|failed)$",
+            "pattern": "^(streaming|completed|failed|cancelled)$",
             "title": "Status",
             "type": "string"
           },
@@ -942,6 +1034,37 @@
           "role"
         ],
         "title": "MessageResponse",
+        "type": "object"
+      },
+      "MessageRetryResponse": {
+        "description": "POST /messages/{id}/retry 响应体：返回原文与已软删的消息。",
+        "properties": {
+          "message_id": {
+            "title": "Message Id",
+            "type": "string"
+          },
+          "removed_message_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Removed Message Ids",
+            "type": "array"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "text": {
+            "default": "",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "message_id"
+        ],
+        "title": "MessageRetryResponse",
         "type": "object"
       },
       "PlanListResponse": {
@@ -1686,6 +1809,66 @@
           }
         },
         "summary": "Run Agent Stream",
+        "tags": [
+          "v1",
+          "agents"
+        ]
+      }
+    },
+    "/api/v1/agents/runs/{run_id}/cancel": {
+      "post": {
+        "description": "请求取消流式运行。\n\n活跃流返回 ``cancelling``（由 SSE 流在下一个事件前收尾）；\n无活跃流（重启 / 已断线）时直接落 ``cancelled`` 并清理残留 streaming 消息。",
+        "operationId": "cancel_stream_run_api_v1_agents_runs__run_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_AgentCancelResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Stream Run",
         "tags": [
           "v1",
           "agents"
@@ -3183,6 +3366,144 @@
           }
         },
         "summary": "Create Message",
+        "tags": [
+          "v1",
+          "messages"
+        ]
+      }
+    },
+    "/api/v1/sessions/{session_id}/messages/{message_id}/branch": {
+      "post": {
+        "description": "以指定消息为分界复制历史到新会话。",
+        "operationId": "branch_message_api_v1_sessions__session_id__messages__message_id__branch_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "title": "Message Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_MessageBranchResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Branch Message",
+        "tags": [
+          "v1",
+          "messages"
+        ]
+      }
+    },
+    "/api/v1/sessions/{session_id}/messages/{message_id}/retry": {
+      "post": {
+        "description": "重试失败 / 取消的助手消息：软删旧问答并返回用户原文。",
+        "operationId": "retry_message_api_v1_sessions__session_id__messages__message_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "title": "Message Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_MessageRetryResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Message",
         "tags": [
           "v1",
           "messages"

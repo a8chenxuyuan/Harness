@@ -9,7 +9,12 @@ from harness.platform.api.deps import get_current_user, get_db
 from harness.platform.api.dto.message_dto import MessageCreateRequest
 from harness.platform.api.vo.auth_vo import UserInfo
 from harness.platform.api.vo.envelope_vo import ApiResponse
-from harness.platform.api.vo.message_vo import MessageListResponse, MessageResponse
+from harness.platform.api.vo.message_vo import (
+    MessageBranchResponse,
+    MessageListResponse,
+    MessageResponse,
+    MessageRetryResponse,
+)
 
 router = APIRouter(prefix="/sessions/{session_id}/messages", tags=["messages"])
 
@@ -51,6 +56,62 @@ async def create_message(
         target=result.id,
         session_id=session_id,
         detail={"role": result.role, "seq": result.seq},
+    )
+    return {"code": 0, "message": "ok", "data": result}
+
+
+@router.post(
+    "/{message_id}/retry", response_model=ApiResponse[MessageRetryResponse]
+)
+async def retry_message(
+    session_id: str,
+    message_id: str,
+    user: UserInfo = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """重试失败 / 取消的助手消息：软删旧问答并返回用户原文。"""
+    from harness.platform.auth.audit import record_audit
+    from harness.platform.service.message_action_service import (
+        MessageActionService,
+    )
+
+    result = await MessageActionService(user, db).retry(session_id, message_id)
+    await record_audit(
+        db,
+        tenant_id=user.tenant_id,
+        user_id=user.user_id,
+        action="message.retry",
+        target=message_id,
+        session_id=session_id,
+        detail={"removed": result.removed_message_ids},
+    )
+    return {"code": 0, "message": "ok", "data": result}
+
+
+@router.post(
+    "/{message_id}/branch", response_model=ApiResponse[MessageBranchResponse]
+)
+async def branch_message(
+    session_id: str,
+    message_id: str,
+    user: UserInfo = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """以指定消息为分界复制历史到新会话。"""
+    from harness.platform.auth.audit import record_audit
+    from harness.platform.service.message_action_service import (
+        MessageActionService,
+    )
+
+    result = await MessageActionService(user, db).branch(session_id, message_id)
+    await record_audit(
+        db,
+        tenant_id=user.tenant_id,
+        user_id=user.user_id,
+        action="message.branch",
+        target=message_id,
+        session_id=session_id,
+        detail={"branch_session_id": result.session_id},
     )
     return {"code": 0, "message": "ok", "data": result}
 
