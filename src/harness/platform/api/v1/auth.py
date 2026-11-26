@@ -14,6 +14,7 @@ from harness.platform.api.deps import get_current_user, get_db
 from harness.platform.api.dto.auth_dto import LoginRequest, RefreshRequest, RegisterRequest
 from harness.platform.api.vo.auth_vo import LoginResponse, UserInfo
 from harness.platform.api.vo.envelope_vo import ApiResponse
+from harness.platform.service.rate_limit import login_rate_limit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -44,7 +45,11 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)) -> 
 
 
 @router.post("/login", response_model=ApiResponse[LoginResponse])
-async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)) -> dict:
+async def login(
+    req: LoginRequest,
+    _rate: None = Depends(login_rate_limit),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
     """用户登录（username + password → access/refresh token）。"""
     from harness.platform.auth.audit import record_audit
     from harness.platform.service.auth_service import AuthService

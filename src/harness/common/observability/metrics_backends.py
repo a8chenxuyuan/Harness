@@ -79,6 +79,10 @@ class PromMetricsBackend:
         self.model_circuit_open_total = Counter(
             "harness_model_circuit_open_total", "模型熔断打开次数", ["model"]
         )
+        # --- 限流（W3-PLAT-02） ---
+        self.rate_limited_total = Counter(
+            "harness_rate_limited_total", "请求被限流次数", ["scope"]
+        )
 
     def record_cache_hit(self, hit: bool, session_id: str) -> None:
         self.cache_hit_ratio.labels(session_id=session_id).set(1.0 if hit else 0.0)
@@ -141,6 +145,9 @@ class PromMetricsBackend:
     def record_model_circuit_open(self, model: str) -> None:
         self.model_circuit_open_total.labels(model=model).inc()
 
+    def record_rate_limited(self, scope: str) -> None:
+        self.rate_limited_total.labels(scope=scope).inc()
+
 
 class DictMetricsBackend:
     """prometheus-client 没装时的简单内存存储。"""
@@ -164,6 +171,7 @@ class DictMetricsBackend:
             "sandbox_violation_total": {},
             "model_retry_total": {},
             "model_circuit_open_total": {},
+            "rate_limited_total": {},
         }
 
     def record_cache_hit(self, hit: bool, session_id: str) -> None:
@@ -230,6 +238,10 @@ class DictMetricsBackend:
     def record_model_circuit_open(self, model: str) -> None:
         key = self.data["model_circuit_open_total"]
         key[model] = key.get(model, 0) + 1
+
+    def record_rate_limited(self, scope: str) -> None:
+        key = self.data["rate_limited_total"]
+        key[scope] = key.get(scope, 0) + 1
 
     def record_http_request(
         self, method: str, path: str, status_code: int, duration: float

@@ -25,6 +25,7 @@ from harness.platform.api.vo.auth_vo import UserInfo
 from harness.platform.api.vo.envelope_vo import ApiResponse
 from harness.platform.api.vo.plan_vo import AgentCancelResponse
 from harness.platform.service.message_service import MessageService
+from harness.platform.service.rate_limit import stream_rate_limit
 from harness.platform.service.stream_service import ChatStreamService, StreamEvent
 
 router = APIRouter(prefix="/agents", tags=["agents"])
@@ -51,6 +52,7 @@ async def run_agent_stream(
     ),
     user: UserInfo = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _rate: None = Depends(stream_rate_limit),
 ):
     """流式运行单 Agent，按 SSE 推送增量事件。
 

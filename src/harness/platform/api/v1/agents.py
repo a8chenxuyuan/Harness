@@ -25,6 +25,7 @@ from harness.platform.api.vo.plan_vo import (
     AgentStatusResponse,
     PlanSummary,
 )
+from harness.platform.service.rate_limit import run_rate_limit
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 log = logging.getLogger(__name__)
@@ -38,6 +39,7 @@ async def run_agent(
     ),
     user: UserInfo = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _rate: None = Depends(run_rate_limit),
 ) -> dict:
     """同步运行 Agent。
 

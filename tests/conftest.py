@@ -43,6 +43,15 @@ async def _isolated_db(tmp_path, monkeypatch):
     await close_db()
 
 
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    """每个用例重置进程内限流器，避免跨用例累计触发 429。"""
+    from harness.platform.service.rate_limit import reset_rate_limiters
+
+    reset_rate_limiters()
+    yield
+
+
 @pytest.fixture
 async def client(app):
     """ASGI 直连客户端（lifespan 不启动，建库由 _isolated_db 负责）。"""
