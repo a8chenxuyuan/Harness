@@ -251,3 +251,101 @@ async def test_stream_requires_owned_session(
         headers=other_headers,
     )
     assert denied.status_code == 404
+
+
+async def test_stream_cancel_marks_cancelled(
+    db_session, user_info, monkeypatch
+) -> None:
+    """登记取消后停止生成：已生成内容保留，消息与运行记录都置 cancelled。"""
+    from harness.platform.repository.agent_run_repository import AgentRunRepository
+    from harness.platform.repository.session_message_repository import (
+        SessionMessageRepository,
+    )
+    from harness.platform.service.session_service import SessionService
+    from harness.platform.service.stream_cancel import (
+        get_stream_cancel_registry,
+        reset_stream_cancel_registry,
+    )
+
+    reset_stream_cancel_registry()
+    _patch_agent(monkeypatch, _happy_events())
+    session = await SessionService(user_info, db_session).create_session("取消")
+    service = ChatStreamService(user_info, db_session)
+
+    agen = service.stream(session.session_id, "问题")
+    started = await agen.__anext__()
+    assert started.event == "message_start"
+    run_id = started.data["run_id"]
+
+    # 先推进一个事件，确保 stream 已登记 run_id
+    delta = await agen.__anext__()
+    assert delta.event == "part_delta"
+    assert get_stream_cancel_registry().request(run_id) is True
+
+    events = [event async for event in agen]
+    assert events[-1].event == "message_end"
+    assert events[-1].data["status"] == "cancelled"
+    assert events[-1].data["error"] == "用户取消"
+
+    messages = await SessionMessageRepository(db_session).list_by_session(
+        user_info.tenant_id, session.session_id
+    )
+    assert messages[-1].status == "cancelled"
+    assert messages[-1].text == "你好"
+
+    record = await AgentRunRepository(db_session).get(run_id)
+    assert record is not None
+    assert record.status == "cancelled"
+
+    reset_stream_cancel_registry()
+
+
+async def test_cancel_endpoint_settles_orphan_run(
+    client: AsyncClient, auth_headers, db_session
+) -> None:
+    """无活跃流的取消请求：运行记录与残留 streaming 消息直接置 cancelled。"""
+    from harness.platform.api.vo.auth_vo import UserInfo
+    from harness.platform.entity.agent_run import AgentRun
+    from harness.platform.repository.agent_run_repository import AgentRunRepository
+    from harness.platform.repository.session_message_repository import (
+        SessionMessageRepository,
+    )
+    from harness.platform.service.message_service import MessageService
+    from harness.platform.service.session_service import SessionService
+
+    me = (await client.get("/api/v1/auth/me", headers=auth_headers)).json()["data"]
+    user = UserInfo(
+        user_id=me["user_id"], tenant_id=me["tenant_id"], role=me["role"]
+    )
+    session = await SessionService(user, db_session).create_session("取消接口")
+    await MessageService(user, db_session).start_streaming_message(session.session_id)
+    runs = AgentRunRepository(db_session)
+    await runs.save(
+        AgentRun(
+            run_id="run-orphan-1",
+            session_id=session.session_id,
+            tenant_id=user.tenant_id,
+            user_id=user.user_id,
+            mode="single",
+            status="running",
+        )
+    )
+
+    resp = await client.post(
+        "/api/v1/agents/runs/run-orphan-1/cancel", headers=auth_headers
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["data"]["status"] == "cancelled"
+
+    db_session.expire_all()
+    record = await runs.get("run-orphan-1")
+    assert record.status == "cancelled"
+    messages = await SessionMessageRepository(db_session).list_by_session(
+        user.tenant_id, session.session_id
+    )
+    assert messages[-1].status == "cancelled"
+
+    missing = await client.post(
+        "/api/v1/agents/runs/run-not-exist/cancel", headers=auth_headers
+    )
+    assert missing.status_code == 404

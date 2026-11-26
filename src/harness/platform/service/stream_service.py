@@ -4,14 +4,18 @@
     - 校验会话归属，落用户消息与 assistant 占位消息（status=streaming）
     - 消费 ``ReActAgent.run_stream`` 的 LoopStreamEvent，转成 StreamEvent
     - 节流把文本 / 工具块增量写回 ``session_messages``
-    - 正常结束置 ``completed``，异常或客户端断线置 ``failed``（保留已生成内容）
+    - 正常结束置 ``completed``，用户取消置 ``cancelled``，
+      异常或客户端断线置 ``failed``（保留已生成内容）
     - 维护 ``agent_runs`` 状态与 token 用量
+
+取消采用协作式：``POST /agents/runs/{run_id}/cancel`` 只登记标记，
+本服务在下一个 Loop 事件前检查并停止生成。
 
 事件协议（SSE 的 event 名）：
     - ``message_start``  {run_id, message_id, session_id, seq}
     - ``part_delta``     {delta}
     - ``tool_call``      {status: start|end, calls?|results?}
-    - ``message_end``    {status, message, metrics, error}
+    - ``message_end``    {status: completed|cancelled|failed, message, metrics, error}
     - ``error``          {message}
 """
 
@@ -33,14 +37,19 @@ from harness.core.loop.streaming import (
 )
 from harness.platform.api.dto.message_dto import MessageCreateRequest
 from harness.platform.api.vo.auth_vo import UserInfo
-from harness.platform.api.vo.message_vo import MessageResponse
 from harness.platform.entity.agent_run import AgentRun
 from harness.platform.repository.agent_run_repository import AgentRunRepository
 from harness.platform.service.message_service import MessageService
+from harness.platform.service.stream_cancel import get_stream_cancel_registry
 from harness.platform.service.stream_events import (
     StreamEvent,
     append_text_part,
     tool_part,
+)
+from harness.platform.service.stream_finalize import (
+    cleanup_interrupted,
+    end_event,
+    finalize_stream,
 )
 
 log = logging.getLogger(__name__)
@@ -85,10 +94,17 @@ class ChatStreamService:
         metrics: dict[str, int] = {}
         last_flush = time.monotonic()
         agent: Any = None
+        cancel_registry = get_stream_cancel_registry()
+        cancel_registry.register(run_id)
 
         try:
             agent = self._build_agent(run_id)
             async for event in agent.run_stream(goal):
+                # 协作式取消：每个事件前检查，命中后保留已生成内容并落终态
+                if cancel_registry.is_cancelled(run_id):
+                    status = "cancelled"
+                    error = "用户取消"
+                    break
                 etype = event.event_type
                 if etype == EVENT_TEXT_DELTA:
                     delta = str(event.payload.get("delta") or "")
@@ -122,11 +138,13 @@ class ChatStreamService:
                     status = "failed"
                     error = str(event.payload.get("error") or "模型调用失败")
                     yield StreamEvent("error", {"message": error})
-            if agent.state is not None:
+            if status == "completed" and agent.state is not None:
                 metrics = dict(agent.state.metrics)
         except GeneratorExit:
             # 生成器被关闭（如服务端主动收流）：当前任务未被取消，直接收尾
-            await self._finalize(
+            await finalize_stream(
+                self.user,
+                self.db,
                 message,
                 run_record,
                 status="failed",
@@ -140,8 +158,13 @@ class ChatStreamService:
             # 客户端断线：当前任务已处于取消上下文，直接 await 会被再次取消，
             # 因此把收尾交给独立任务，并用 shield 等待其完成
             task = asyncio.create_task(
-                self._cleanup_interrupted(
-                    message.id, run_record.run_id, text, parts, "客户端断开连接"
+                cleanup_interrupted(
+                    self.user,
+                    message.id,
+                    run_record.run_id,
+                    text,
+                    parts,
+                    "客户端断开连接",
                 )
             )
             try:
@@ -152,7 +175,9 @@ class ChatStreamService:
         except Exception as exc:  # noqa: BLE001
             log.exception("ChatStreamService: 流式运行失败 session=%s", session_id)
             status, error = "failed", str(exc)
-            response = await self._finalize(
+            response = await finalize_stream(
+                self.user,
+                self.db,
                 message,
                 run_record,
                 status=status,
@@ -162,10 +187,14 @@ class ChatStreamService:
                 metrics={},
             )
             yield StreamEvent("error", {"message": error})
-            yield self._end_event(response, status, {}, error)
+            yield end_event(response, status, {}, error)
             return
+        finally:
+            cancel_registry.release(run_id)
 
-        response = await self._finalize(
+        response = await finalize_stream(
+            self.user,
+            self.db,
             message,
             run_record,
             status=status,
@@ -174,7 +203,7 @@ class ChatStreamService:
             error=error,
             metrics=metrics,
         )
-        yield self._end_event(response, status, metrics, error)
+        yield end_event(response, status, metrics, error)
 
     # ------------------------------------------------------------------
     # 内部
@@ -211,90 +240,6 @@ class ChatStreamService:
             updated_at=now,
         )
         return await self.runs.save(record)
-
-    async def _finalize(
-        self,
-        message,
-        record: AgentRun,
-        *,
-        status: str,
-        text: str,
-        parts: list[dict],
-        error: str | None,
-        metrics: dict[str, int],
-    ) -> MessageResponse:
-        """落消息终态 + 运行终态，返回最终消息快照。"""
-        response = await self.messages.finish_streaming_message(
-            message, text=text, parts=parts, status=status
-        )
-        now = datetime.now(timezone.utc)
-        record.status = "succeeded" if status == "completed" else "failed"
-        record.output = text or None
-        record.error = error
-        record.token_usage = json.dumps(metrics or {}, ensure_ascii=False)
-        record.finished_at = now
-        record.updated_at = now
-        try:
-            await self.runs.save(record)
-        except Exception:  # noqa: BLE001 — 运行记录失败不影响消息终态
-            log.exception("ChatStreamService: 运行记录落库失败 run=%s", record.run_id)
-        return response
-
-    async def _cleanup_interrupted(
-        self,
-        message_id: str,
-        run_id: str,
-        text: str,
-        parts: list[dict],
-        error: str,
-    ) -> None:
-        """断线收尾：用独立 DB session 把消息与运行记录置为 failed。
-
-        断线时当前任务处于取消上下文，原 session 的后续 await 会被再次取消，
-        因此必须新开连接、在独立任务中完成收尾。
-        """
-        from harness.platform.infra.engine import get_session_factory
-
-        try:
-            factory = get_session_factory()
-            async with factory() as session:
-                messages = MessageService(self.user, session)
-                message = await messages.messages.get(message_id)
-                if message is not None:
-                    await messages.finish_streaming_message(
-                        message, text=text, parts=parts, status="failed"
-                    )
-                runs = AgentRunRepository(session)
-                record = await runs.get(run_id)
-                if record is None:
-                    return
-                now = datetime.now(timezone.utc)
-                record.status = "failed"
-                record.output = text or None
-                record.error = error
-                record.finished_at = now
-                record.updated_at = now
-                await runs.save(record)
-        except Exception:  # noqa: BLE001 — 收尾失败只记日志，避免任务异常逃逸
-            log.exception("ChatStreamService: 断线收尾失败 message=%s", message_id)
-
-    @staticmethod
-    def _end_event(
-        response: MessageResponse,
-        status: str,
-        metrics: dict[str, int],
-        error: str | None,
-    ) -> StreamEvent:
-        """组装 message_end 事件（携带最终消息快照）。"""
-        return StreamEvent(
-            "message_end",
-            {
-                "status": status,
-                "message": response.model_dump(mode="json"),
-                "metrics": metrics,
-                "error": error,
-            },
-        )
 
 
 __all__ = ["ChatStreamService", "StreamEvent"]
