@@ -3,7 +3,7 @@ import axios, { AxiosError } from "axios";
 
 import type { ApiResponse } from "./types";
 
-const TOKEN_KEY = "harness.access_token";
+export const TOKEN_KEY = "harness.access_token";
 
 /** 后端错误或网络错误统一包装。 */
 export class ApiError extends Error {
