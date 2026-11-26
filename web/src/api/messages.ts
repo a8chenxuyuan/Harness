@@ -1,12 +1,12 @@
 /** 会话消息接口：读取消息列表 / 发送消息（同步或 SSE 流式）。 */
 import { ApiError, get, post, TOKEN_KEY } from "./http";
+import { mockCancelStreamRun } from "./mock";
 import {
   mockBranchMessage,
-  mockCancelStreamRun,
   mockListMessages,
   mockRetryMessage,
   mockSendMessage,
-} from "./mock";
+} from "./mock-messages";
 import type {
   ChatMessageListData,
   MessageBranchData,

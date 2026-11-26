@@ -21,20 +21,21 @@
 
       <table class="table">
         <thead>
-          <tr><th>会话</th><th>状态</th><th>消息数</th><th>会话 ID</th><th>最近更新</th><th></th></tr>
+          <tr><th>会话</th><th>状态</th><th>消息数</th><th>会话 ID</th><th>最近更新</th><th>操作</th></tr>
         </thead>
         <tbody>
           <tr v-if="loading">
             <td colspan="6" class="loading">加载中…</td>
           </tr>
-          <tr v-else-if="rows.length === 0">
+          <tr v-else-if="items.length === 0">
             <td colspan="6" class="loading">没有符合条件的会话</td>
           </tr>
           <template v-else>
             <tr
-              v-for="item in rows"
+              v-for="item in items"
               :key="item.session_id"
               class="clickable"
+              :class="{ muted: item.status === 'archived' }"
               @click="router.push(`/sessions/${item.session_id}`)"
             >
             <td>
@@ -47,7 +48,15 @@
             <td class="mono">{{ item.message_count }}</td>
               <td class="mono">{{ item.session_id }}</td>
               <td class="mono">{{ item.updated_at }}</td>
-              <td>›</td>
+              <td class="row-actions" @click.stop>
+                <button
+                  class="btn ghost mini"
+                  :disabled="acting === item.session_id"
+                  @click="toggleArchive(item)"
+                >
+                  {{ item.status === "archived" ? "恢复" : "归档" }}
+                </button>
+              </td>
             </tr>
           </template>
         </tbody>
@@ -69,7 +78,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 
-import { createSession, listSessions } from "@/api/sessions";
+import { createSession, archiveSession, listSessions } from "@/api/sessions";
 import type { SessionSummary } from "@/api/types";
 import PageHeader from "@/components/PageHeader.vue";
 import { pushToast } from "@/composables/toast";
@@ -81,16 +90,14 @@ const total = ref(0);
 const items = ref<SessionSummary[]>([]);
 const filter = ref<"all" | "active" | "archived">("all");
 const loading = ref(true);
+const acting = ref("");
 
 const pages = computed(() => Math.max(1, Math.ceil(total.value / size)));
-const rows = computed(() =>
-  filter.value === "all" ? items.value : items.value.filter((item) => item.status === filter.value),
-);
 
 async function reload(): Promise<void> {
   loading.value = true;
   try {
-    const data = await listSessions(page.value, size);
+    const data = await listSessions(page.value, size, filter.value);
     items.value = data.items;
     total.value = data.total;
   } catch (err) {
@@ -106,8 +113,26 @@ function go(target: number): void {
   void reload();
 }
 
-function setFilter(next: "all" | "active" | "archived"): void {
+async function setFilter(next: "all" | "active" | "archived"): Promise<void> {
+  if (filter.value === next) return;
   filter.value = next;
+  page.value = 1;
+  await reload();
+}
+
+/** 归档 / 恢复：状态过滤在服务端生效，操作后重新拉取当前页。 */
+async function toggleArchive(item: SessionSummary): Promise<void> {
+  const archived = item.status !== "archived";
+  acting.value = item.session_id;
+  try {
+    await archiveSession(item.session_id, archived);
+    pushToast(archived ? "已归档" : "已恢复");
+    await reload();
+  } catch (err) {
+    pushToast(err instanceof Error ? err.message : "操作失败");
+  } finally {
+    acting.value = "";
+  }
 }
 
 /** 新建会话后直接进入详情页开始对话。 */
@@ -152,5 +177,18 @@ onMounted(reload);
 .pager span.disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.clickable.muted {
+  opacity: 0.62;
+}
+
+.row-actions {
+  text-align: right;
+}
+
+.btn.mini {
+  padding: 3px 9px;
+  font-size: 11px;
 }
 </style>
