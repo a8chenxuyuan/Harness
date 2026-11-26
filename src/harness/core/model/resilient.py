@@ -28,6 +28,7 @@ from harness.common.observability.metrics import (
     record_model_circuit_open,
     record_model_retry,
 )
+from harness.common.observability.tracing import start_span
 from harness.core.model.base import Model
 from harness.core.model.types import ChatChunk, GenerateOptions
 
@@ -146,9 +147,13 @@ class ResilientModel(Model):
         while True:
             emitted = False
             try:
-                async for chunk in self._iterate(messages, tools, options):
-                    emitted = True
-                    yield chunk
+                with start_span(
+                    "model.stream", {"model": self.name, "attempt": attempt}
+                ) as span:
+                    async for chunk in self._iterate(messages, tools, options):
+                        emitted = True
+                        yield chunk
+                    span.set_attribute("status", "ok")
                 self.breaker.record_success(self.name)
                 return
             except asyncio.CancelledError:

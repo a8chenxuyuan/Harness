@@ -14,6 +14,10 @@ DEFAULT_REQUEST_ID = "-"
 
 _request_id: ContextVar[str] = ContextVar("request_id", default=DEFAULT_REQUEST_ID)
 
+# 一次运行的业务上下文（tenant / user / session / run / mode），
+# 供 span 自动附带属性，避免每层手工传参。
+_run_attrs: ContextVar[dict] = ContextVar("run_attrs", default={})
+
 
 def get_request_id() -> str:
     """返回当前请求的 request_id；不在请求上下文时返回 ``-``。"""
@@ -28,6 +32,29 @@ def set_request_id(value: str) -> Token:
 def reset_request_id(token: Token) -> None:
     """恢复上一个 request_id（请求结束时调用）。"""
     _request_id.reset(token)
+
+
+def bind_run_context(**attrs: object) -> Token:
+    """绑定一次运行的业务属性（空值会被忽略）。"""
+    cleaned = {k: v for k, v in attrs.items() if v not in (None, "")}
+    return _run_attrs.set(cleaned)
+
+
+def reset_run_context(token: Token) -> None:
+    """恢复运行上下文。"""
+    _run_attrs.reset(token)
+
+
+def get_run_context() -> dict:
+    """当前运行属性副本。"""
+    return dict(_run_attrs.get())
+
+
+def current_span_attributes() -> dict:
+    """span 默认属性：request_id + 运行上下文。"""
+    attrs = {"request_id": get_request_id()}
+    attrs.update(_run_attrs.get())
+    return attrs
 
 
 class RequestIdFilter(logging.Filter):
@@ -59,9 +86,13 @@ def unbind_structlog_context() -> None:
 __all__ = [
     "DEFAULT_REQUEST_ID",
     "RequestIdFilter",
+    "bind_run_context",
     "bind_structlog_context",
+    "current_span_attributes",
     "get_request_id",
+    "get_run_context",
     "reset_request_id",
+    "reset_run_context",
     "set_request_id",
     "unbind_structlog_context",
 ]

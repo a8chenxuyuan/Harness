@@ -26,8 +26,15 @@ import json
 import logging
 import time
 import uuid
+from contextlib import ExitStack
 from datetime import datetime, timezone
 from typing import Any, AsyncIterator
+
+from harness.common.observability.context import (
+    bind_run_context,
+    reset_run_context,
+)
+from harness.common.observability.tracing import start_span
 
 from harness.core.loop.streaming import (
     EVENT_ERROR,
@@ -103,6 +110,17 @@ class ChatStreamService:
         agent: Any = None
         cancel_registry = get_stream_cancel_registry()
         cancel_registry.register(run_id)
+        run_token = bind_run_context(
+            tenant_id=self.user.tenant_id,
+            user_id=self.user.user_id,
+            session_id=session_id,
+            run_id=run_id,
+            mode="single",
+        )
+        span_stack = ExitStack()
+        span_stack.enter_context(
+            start_span("agent.run.stream", {"mode": "single"})
+        )
 
         try:
             agent = self._build_agent(run_id)
@@ -197,6 +215,8 @@ class ChatStreamService:
             yield end_event(response, status, {}, error)
             return
         finally:
+            span_stack.close()
+            reset_run_context(run_token)
             cancel_registry.release(run_id)
             try:
                 from harness.platform.service.quota_service import QuotaService

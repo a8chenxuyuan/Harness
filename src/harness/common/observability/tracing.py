@@ -7,8 +7,11 @@ opentelemetry 是可选依赖——没装时本模块返回的是 no-op 实现�
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import contextmanager
 from typing import Any, Iterator
+
+from .context import current_span_attributes
 
 log = logging.getLogger(__name__)
 
@@ -85,9 +88,12 @@ else:
 def start_span(name: str, attrs: dict[str, Any] | None = None):
     """启动一个 tracing span，返回 context manager。
 
+    自动附带 ``request_id`` 与当前运行上下文（tenant_id / session_id /
+    run_id 等），调用方只传业务专属属性即可。
+
     用法::
 
-        with start_span("model.generate", {"session_id": sess}) as span:
+        with start_span("model.generate", {"model": name}) as span:
             ...
             span.set_attribute("tokens", 123)
 
@@ -100,7 +106,10 @@ def start_span(name: str, attrs: dict[str, Any] | None = None):
     Returns:
         context manager，yield span 对象。
     """
-    return _context_manager_impl(name, attrs)
+    merged = current_span_attributes()
+    if attrs:
+        merged.update(attrs)
+    return _context_manager_impl(name, merged)
 
 
 def end_span(span: Any, attrs: dict[str, Any] | None = None) -> None:
@@ -123,25 +132,64 @@ def end_span(span: Any, attrs: dict[str, Any] | None = None) -> None:
             pass
 
 
-def init_otel(service_name: str = "harness") -> None:
-    """可选：初始化全局 OTel provider。
+_provider: Any = None
 
-    没装 opentelemetry 时静默跳过，只打 debug 日志。
 
-    Args:
-        service_name: 服务名，写入 Resource 属性。
+def init_otel(
+    service_name: str = "harness",
+    *,
+    endpoint: str | None = None,
+    exporter: Any = None,
+) -> None:
+    """初始化全局 OTel provider。
+
+    - ``exporter`` 显式传入时直接使用（测试用 InMemorySpanExporter）
+    - 否则读取 ``endpoint`` / ``OTEL_EXPORTER_OTLP_ENDPOINT`` / ``Settings.otlp_endpoint``，
+      非空时挂 OTLP HTTP 批量导出
+    - 都没有时仅注册 provider（span 创建但不外发），保证本地零配置可跑
+
+    sdk 未安装时静默跳过。
     """
-    if not _OTEL_AVAILABLE:
-        log.debug("opentelemetry 未安装，跳过 init_otel")
+    global _provider
+    if not _OTEL_AVAILABLE or _provider is not None:
         return
     try:
         from opentelemetry import trace
         from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
 
-        resource = Resource.create({"service.name": service_name})
-        provider = TracerProvider(resource=resource)
+        provider = TracerProvider(
+            resource=Resource.create({"service.name": service_name})
+        )
+        if exporter is not None:
+            provider.add_span_processor(SimpleSpanProcessor(exporter))
+        else:
+            target = endpoint or os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+            if not target:
+                try:
+                    from harness.common.config.settings import Settings
+
+                    target = getattr(Settings(), "otlp_endpoint", "") or ""
+                except Exception:  # noqa: BLE001
+                    target = ""
+            if target:
+                from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+                    OTLPSpanExporter,
+                )
+
+                provider.add_span_processor(
+                    BatchSpanProcessor(OTLPSpanExporter(endpoint=target))
+                )
+                log.info("opentelemetry OTLP exporter: %s", target)
+
         trace.set_tracer_provider(provider)
+        _provider = provider
         log.info("opentelemetry 已初始化，service.name=%s", service_name)
     except Exception:  # noqa: BLE001
         log.exception("init_otel 失败")
+
+
+def get_tracer_provider() -> Any:
+    """返回已初始化的 provider（测试 / 诊断用）。"""
+    return _provider

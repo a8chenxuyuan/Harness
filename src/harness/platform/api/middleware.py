@@ -23,6 +23,7 @@ from harness.common.observability.context import (
 )
 from harness.common.observability.logging import get_logger
 from harness.common.observability.metrics import record_http_request
+from harness.common.observability.tracing import start_span
 
 log = get_logger("harness.access")
 
@@ -42,8 +43,13 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         started = time.perf_counter()
         status_code = 500
         try:
-            response = await call_next(request)
-            status_code = response.status_code
+            with start_span(
+                "http.request",
+                {"http.method": request.method, "http.path": _metric_path(request)},
+            ) as span:
+                response = await call_next(request)
+                status_code = response.status_code
+                span.set_attribute("http.status_code", status_code)
             response.headers[_HEADER] = request_id
             return response
         finally:

@@ -17,7 +17,7 @@ from .metrics import (
     record_tool_duration,
     record_ttft,
 )
-from .tracing import end_span, init_otel, start_span
+from .tracing import end_span, get_tracer_provider, init_otel, start_span
 
 __all__ = [
     # logging
@@ -35,6 +35,7 @@ __all__ = [
     "record_ttft",
     # tracing
     "end_span",
+    "get_tracer_provider",
     "init_otel",
     "start_span",
 ]
