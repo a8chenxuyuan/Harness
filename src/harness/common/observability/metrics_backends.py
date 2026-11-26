@@ -72,6 +72,13 @@ class PromMetricsBackend:
             ["method", "path"],
             buckets=(0.01, 0.05, 0.1, 0.3, 0.5, 1.0, 3.0, 10.0, 30.0),
         )
+        # --- 模型韧性（W3-KERN-03） ---
+        self.model_retry_total = Counter(
+            "harness_model_retry_total", "模型调用重试次数", ["model", "reason"]
+        )
+        self.model_circuit_open_total = Counter(
+            "harness_model_circuit_open_total", "模型熔断打开次数", ["model"]
+        )
 
     def record_cache_hit(self, hit: bool, session_id: str) -> None:
         self.cache_hit_ratio.labels(session_id=session_id).set(1.0 if hit else 0.0)
@@ -128,6 +135,12 @@ class PromMetricsBackend:
             method=method, path=path
         ).observe(duration)
 
+    def record_model_retry(self, model: str, reason: str) -> None:
+        self.model_retry_total.labels(model=model, reason=reason).inc()
+
+    def record_model_circuit_open(self, model: str) -> None:
+        self.model_circuit_open_total.labels(model=model).inc()
+
 
 class DictMetricsBackend:
     """prometheus-client 没装时的简单内存存储。"""
@@ -149,6 +162,8 @@ class DictMetricsBackend:
             "plan_approval_latency": [],
             "replan_total": {},
             "sandbox_violation_total": {},
+            "model_retry_total": {},
+            "model_circuit_open_total": {},
         }
 
     def record_cache_hit(self, hit: bool, session_id: str) -> None:
@@ -206,6 +221,15 @@ class DictMetricsBackend:
     def record_sandbox_violation(self, reason: str) -> None:
         key = self.data["sandbox_violation_total"]
         key[reason] = key.get(reason, 0) + 1
+
+    def record_model_retry(self, model: str, reason: str) -> None:
+        key = self.data["model_retry_total"]
+        pair = f"{model}:{reason}"
+        key[pair] = key.get(pair, 0) + 1
+
+    def record_model_circuit_open(self, model: str) -> None:
+        key = self.data["model_circuit_open_total"]
+        key[model] = key.get(model, 0) + 1
 
     def record_http_request(
         self, method: str, path: str, status_code: int, duration: float

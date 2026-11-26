@@ -107,6 +107,16 @@ def record_sandbox_violation(reason: str = "unknown") -> None:
     _backend.record_sandbox_violation(reason)
 
 
+def record_model_retry(model: str, reason: str) -> None:
+    """记录一次模型调用重试（reason: timeout / error）。"""
+    _backend.record_model_retry(model, reason)
+
+
+def record_model_circuit_open(model: str) -> None:
+    """记录一次模型熔断打开。"""
+    _backend.record_model_circuit_open(model)
+
+
 # ---------------------------------------------------------------------------
 # HTTP / 平台指标（Phase 23）
 # ---------------------------------------------------------------------------
@@ -185,6 +195,8 @@ __all__ = [
     "record_handoff",
     "record_http_request",
     "record_loop_iteration",
+    "record_model_circuit_open",
+    "record_model_retry",
     "record_orchestrator_dispatch",
     "record_plan_approval_latency",
     "record_replan",
