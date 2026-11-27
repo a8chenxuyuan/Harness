@@ -1,7 +1,7 @@
 /** Memory 管理页：搜索 + 分页 + 手动保存 + 删除。 */
 <template>
   <div>
-    <PageHeader title="长期记忆" subtitle="Agent 跨会话的外部大脑，支持关键词搜索与手动管理">
+    <PageHeader title="员工记忆" subtitle="员工跨对话记住的你的偏好与信息，可查看、搜索与纠正">
       <template #actions>
         <button class="btn ghost" :disabled="loading" @click="reload">刷新</button>
         <button class="btn primary" @click="showSave = true">手动保存</button>
@@ -41,7 +41,7 @@
             <td colspan="5" class="empty">加载中…</td>
           </tr>
           <tr v-else-if="items.length === 0">
-            <td colspan="5" class="empty">暂无长期记忆。Agent 的 memory_save 工具或手动保存会写入这里。</td>
+            <td colspan="5" class="empty">员工还没有记住任何内容。对话中它学到的东西会自动出现在这里。</td>
           </tr>
           <template v-else v-for="item in items" :key="item.item_id">
             <tr>
@@ -76,7 +76,7 @@
     <!-- 保存弹窗 -->
     <div v-if="showSave" class="modal-backdrop" @click.self="showSave = false">
       <div class="modal">
-        <h3>手动保存长期记忆</h3>
+        <h3>手动添加记忆</h3>
         <p class="muted">用户主动存的记忆不需要审核，保存后 Agent 的 memory_search 立即可检索到。</p>
         <label>
           <span>内容 *</span>

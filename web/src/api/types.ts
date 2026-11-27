@@ -482,3 +482,35 @@ export interface WebhookDeliveryListData {
 export interface WebhookTestData {
   delivery: WebhookDeliveryItem;
 }
+
+/** 运行记录（任务中心行，GET /runs）。 */
+export interface RunItem {
+  run_id: string;
+  session_id: string | null;
+  mode: string;
+  status: string;
+  input: Record<string, unknown>;
+  output: string | null;
+  error: string | null;
+  token_usage: Record<string, unknown>;
+  started_at: string | null;
+  finished_at: string | null;
+  created_at: string | null;
+}
+
+/** 渠道绑定（我的连接，GET /channels/bindings）。 */
+export interface ChannelBinding {
+  id: string;
+  platform: string;
+  platform_user_id: string;
+  display_name: string | null;
+  status: string;
+  last_login_at: string | null;
+  created_at: string;
+}
+
+/** GET /channels/bindings 响应。 */
+export interface ChannelBindingList {
+  items: ChannelBinding[];
+  total: number;
+}

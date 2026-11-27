@@ -30,12 +30,18 @@ ROLE_LEVELS = {"machine": 0, "member": 1, "admin": 2, "owner": 3}
 ASSIGNABLE_ROLES = ("owner", "admin", "member")
 
 # 页面清单（与前端路由 meta.pageKey 对齐）
+# 用户区：home/sessions/tasks/automation/connections/memories
+# 管理端：overview/agent/skills/tools/api-keys/webhooks/audit/observability/permissions
 PAGE_KEYS: tuple[str, ...] = (
-    "overview",
+    "home",
     "sessions",
+    "tasks",
+    "automation",
+    "connections",
+    "memories",
+    "overview",
     "agent",
     "skills",
-    "memories",
     "tools",
     "api-keys",
     "webhooks",
@@ -47,9 +53,16 @@ PAGE_KEYS: tuple[str, ...] = (
     "permissions",
 )
 
-# 默认矩阵：member 只见 C 端核心页；admin 全量；owner 代码层保底全量
+# 默认矩阵：member 只见 C 端用户区；admin 全量；owner 代码层保底全量
 DEFAULT_MATRIX: dict[str, set[str]] = {
-    "member": {"overview", "sessions", "agent"},
+    "member": {
+        "home",
+        "sessions",
+        "tasks",
+        "automation",
+        "connections",
+        "memories",
+    },
     "admin": set(PAGE_KEYS),
 }
 
@@ -97,6 +110,28 @@ async def _load_matrix(session, tenant_id: str) -> dict[str, dict[str, bool]]:
     matrix: dict[str, dict[str, bool]] = {}
     for row in existing:
         matrix.setdefault(row.role, {})[row.page_key] = row.allowed
+
+    # 老库平滑补种：已有矩阵缺新页面行时按默认值补齐（不覆盖已有行，
+    # 保留管理员自定义）。例如 W4.1-WEB-02 新增的 home/tasks/automation。
+    added = False
+    for role, pages in DEFAULT_MATRIX.items():
+        for page_key in PAGE_KEYS:
+            if page_key not in matrix.get(role, {}):
+                session.add(
+                    RolePagePermission(
+                        id=str(uuid.uuid4()),
+                        tenant_id=tenant_id,
+                        role=role,
+                        page_key=page_key,
+                        allowed=page_key in pages,
+                    )
+                )
+                matrix.setdefault(role, {})[page_key] = page_key in pages
+                added = True
+    if added:
+        await session.commit()
+        log.info("permission: 租户 %s 矩阵补种新页面行", tenant_id)
+
     _matrix_cache[tenant_id] = matrix
     return matrix
 

@@ -25,9 +25,33 @@ const router = createRouter({
       children: [
         {
           path: "",
+          name: "home",
+          component: () => import("@/views/WorkbenchView.vue"),
+          meta: { title: "工作台", pageKey: "home" },
+        },
+        {
+          path: "overview",
           name: "overview",
           component: () => import("@/views/OverviewView.vue"),
           meta: { title: "概览", pageKey: "overview" },
+        },
+        {
+          path: "tasks",
+          name: "tasks",
+          component: () => import("@/views/TasksView.vue"),
+          meta: { title: "任务中心", pageKey: "tasks" },
+        },
+        {
+          path: "automation",
+          name: "automation",
+          component: () => import("@/views/AutomationView.vue"),
+          meta: { title: "自动化", pageKey: "automation" },
+        },
+        {
+          path: "connections",
+          name: "connections",
+          component: () => import("@/views/ConnectionsView.vue"),
+          meta: { title: "我的连接", pageKey: "connections" },
         },
         {
           path: "sessions",

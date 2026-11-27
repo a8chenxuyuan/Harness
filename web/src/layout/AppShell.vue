@@ -16,37 +16,45 @@
         <span>⌄</span>
       </div>
 
-      <div class="nav-label">工作台</div>
-      <RouterLink v-if="can('overview')" class="nav-item" :class="{ active: isActive('overview') }" to="/">
-        <span class="ico">◫</span>概览
+      <div class="nav-label">我的空间</div>
+      <RouterLink v-if="can('home')" class="nav-item" :class="{ active: isActive('home') }" to="/">
+        <span class="ico">◫</span>工作台
       </RouterLink>
       <RouterLink v-if="can('sessions')" class="nav-item" :class="{ active: isActive('sessions') }" to="/sessions">
-        <span class="ico">☰</span>会话
+        <span class="ico">☰</span>对话
+      </RouterLink>
+      <RouterLink v-if="can('tasks')" class="nav-item" :class="{ active: isActive('tasks') }" to="/tasks">
+        <span class="ico">☑</span>任务中心
+      </RouterLink>
+      <RouterLink v-if="can('automation')" class="nav-item" :class="{ active: isActive('automation') }" to="/automation">
+        <span class="ico">⚡</span>自动化
+      </RouterLink>
+      <RouterLink v-if="can('connections')" class="nav-item" :class="{ active: isActive('connections') }" to="/connections">
+        <span class="ico">⇄</span>我的连接
+      </RouterLink>
+      <RouterLink v-if="can('memories')" class="nav-item" :class="{ active: isActive('memories') }" to="/memories">
+        <span class="ico">◇</span>员工记忆
+      </RouterLink>
+
+      <div v-if="hasAny(['overview', 'agent', 'skills', 'tools', 'api-keys', 'webhooks', 'audit', 'observability', 'permissions'])" class="nav-label">管理端</div>
+      <RouterLink v-if="can('overview')" class="nav-item" :class="{ active: isActive('overview') }" to="/overview">
+        <span class="ico">◫</span>概览
       </RouterLink>
       <RouterLink v-if="can('agent')" class="nav-item" :class="{ active: isActive('agent') }" to="/agent">
         <span class="ico">▶</span>Agent 运行
       </RouterLink>
-
-      <div v-if="hasAny(['skills', 'memories', 'tools'])" class="nav-label">能力</div>
       <RouterLink v-if="can('skills')" class="nav-item" :class="{ active: isActive('skills') }" to="/skills">
         <span class="ico">✦</span>Skill 管理
-      </RouterLink>
-      <RouterLink v-if="can('memories')" class="nav-item" :class="{ active: isActive('memories') }" to="/memories">
-        <span class="ico">◇</span>长期记忆
       </RouterLink>
       <RouterLink v-if="can('tools')" class="nav-item" :class="{ active: isActive('tools') }" to="/tools">
         <span class="ico">◫</span>工具市场
       </RouterLink>
-
-      <div v-if="hasAny(['api-keys', 'webhooks'])" class="nav-label">集成</div>
       <RouterLink v-if="can('api-keys')" class="nav-item" :class="{ active: isActive('api-keys') }" to="/api-keys">
         <span class="ico">⌗</span>API Key
       </RouterLink>
       <RouterLink v-if="can('webhooks')" class="nav-item" :class="{ active: isActive('webhooks') }" to="/webhooks">
         <span class="ico">⇅</span>Webhooks
       </RouterLink>
-
-      <div v-if="hasAny(['audit', 'observability', 'permissions'])" class="nav-label">管理端</div>
       <RouterLink
         v-if="can('audit')"
         class="nav-item"
