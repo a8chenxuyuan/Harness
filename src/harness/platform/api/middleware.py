@@ -86,6 +86,10 @@ def _metric_path(request: Request) -> str:
     """
     path = request.url.path
     for name, value in (request.path_params or {}).items():
+        # SPA 兜底路由（full_path）不做模板化：/api 未命中 404 时
+        # 需保留真实路径，供访问日志 / 追踪定位
+        if name == "full_path":
+            continue
         if value:
             path = path.replace(str(value), "{" + name + "}")
     return path

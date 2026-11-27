@@ -97,7 +97,51 @@ def create_app() -> FastAPI:
     from harness.platform.api.controllers.gateway import router as gateway_ws_router
     app.include_router(gateway_ws_router)
 
+    # ========== 前端 SPA 静态托管（web/dist 存在时；W4-CHAN-05） ==========
+    # 必须在所有 API 路由之后注册：catch-all 只兜住 API 之外的路径，
+    # 让 /login、/oauth/callback 等前端路由由 index.html 接管。
+    _mount_frontend_spa(app)
+
     return app
+
+
+def _mount_frontend_spa(app: FastAPI) -> None:
+    """托管 web/dist 构建产物（SPA history 路由 fallback）。
+
+    - /assets/* 直接回静态文件
+    - 文件命中的路径（favicon 等）回文件
+    - 其余非 API 路径全部回 index.html，由 vue-router 接管
+    - dist 不存在（纯后端部署）时静默跳过
+    """
+    try:
+        from pathlib import Path
+
+        from fastapi.responses import FileResponse
+        from fastapi.staticfiles import StaticFiles
+
+        dist = Path(__file__).resolve().parents[2] / "web" / "dist"
+        if not (dist / "index.html").is_file():
+            return
+
+        assets_dir = dist / "assets"
+        if assets_dir.is_dir():
+            app.mount("/assets", StaticFiles(directory=assets_dir), name="spa-assets")
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def spa_fallback(full_path: str) -> Response:
+            # API / WS / 指标路径不允许被 SPA 兜底——未命中就是 404
+            first = full_path.split("/", 1)[0]
+            if first in ("api", "ws", "metrics"):
+                from fastapi import HTTPException
+
+                raise HTTPException(status_code=404, detail="Not Found")
+            candidate = dist / full_path.lstrip("/")
+            # 防目录穿越：resolve 后必须仍在 dist 内
+            if full_path and candidate.is_file() and candidate.resolve().is_relative_to(dist):
+                return FileResponse(candidate)
+            return FileResponse(dist / "index.html")
+    except Exception:  # noqa: BLE001 — 静态托管失败不阻断 API 启动
+        pass
 
 
 # ---------------------------------------------------------------------------
