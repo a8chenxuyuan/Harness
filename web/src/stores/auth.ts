@@ -49,5 +49,23 @@ export const useAuthStore = defineStore("auth", () => {
     }
   }
 
-  return { token, refreshToken, user, loading, loggedIn, signIn, signOut, hydrate };
+  /** OAuth 免密登录采纳：直接写入后端签发的双 token。 */
+  function adoptTokens(access: string, refresh: string): void {
+    token.value = access;
+    refreshToken.value = refresh;
+    localStorage.setItem(TOKEN_KEY, access);
+    localStorage.setItem(REFRESH_KEY, refresh);
+  }
+
+  return {
+    token,
+    refreshToken,
+    user,
+    loading,
+    loggedIn,
+    signIn,
+    signOut,
+    hydrate,
+    adoptTokens,
+  };
 });

@@ -1,11 +1,13 @@
-"""企微消息消费循环（W4-CHAN-02A 收→Agent→发全链路）。
+"""企微消息消费循环（W4-CHAN-02A 收→Agent→发全链路；CHAN-05 绑定路由）。
 
 app lifespan 里启动一个后台任务：
     adapter.receive() → GatewayRouter.dispatch → agent_runner → adapter.send()
 
-agent_runner（联调版，CHAN-05 会换成 channel_bindings 路由）：
-    - 固定租户 DEFAULT_TENANT_ID 下自动建/复用 ``wecom_bot`` 用户
-      作为 Agent 执行身份；
+agent_runner：
+    - 按 (wecom, platform_user_id) 查 channel_bindings 绑定路由到
+      对应 harness 用户 + 租户（W4-CHAN-05）；
+    - 未绑定时回退 DEFAULT_TENANT 下自动建/复用的 ``wecom_bot``
+      占位用户（保底可用，消息仍能被 Agent 处理）；
     - 调 AgentService.run(goal=消息内容, mode="single")；
     - 把 result["output"] 发回企微。
 """
@@ -19,13 +21,37 @@ import uuid
 log = logging.getLogger(__name__)
 
 WECOM_BOT_USERNAME = "wecom_bot"
+WECOM_PLATFORM = "wecom"
 
 
-async def _resolve_agent_user(session) -> tuple[str, str]:
-    """查/建 wecom_bot 用户，返回 (user_id, tenant_id)。
+async def _resolve_agent_user(session, platform_user_id: str) -> tuple[str, str]:
+    """消息身份路由：绑定优先，wecom_bot 占位兜底。
 
-    用户不存在时现场创建（member 角色、随机不可登录密码）。
+    Returns:
+        (user_id, tenant_id)。
     """
+    from harness.platform.repository.channel_binding_repository import (
+        ChannelBindingRepository,
+    )
+    from harness.platform.repository.user_repository import UserRepository
+
+    # 1. 绑定路由（W4-CHAN-05）
+    try:
+        repo = ChannelBindingRepository(session)
+        binding = await repo.get_by_platform_user(WECOM_PLATFORM, platform_user_id)
+        if binding is not None and binding.status == "active":
+            user = await UserRepository(session).get(binding.harness_user_id)
+            if user is not None and user.is_active:
+                return user.id, user.tenant_id
+    except Exception:  # noqa: BLE001 — 绑定表异常不应阻断消息处理
+        log.warning("wecom: 绑定路由查询失败，回退默认身份", exc_info=True)
+
+    # 2. 兜底：wecom_bot 占位用户
+    return await _resolve_bot_user(session)
+
+
+async def _resolve_bot_user(session) -> tuple[str, str]:
+    """查/建 wecom_bot 占位用户，返回 (user_id, tenant_id)。"""
     from harness.platform.entity.user import User
     from harness.platform.repository.user_repository import UserRepository
     from harness.platform.service.auth_service import DEFAULT_TENANT_ID
@@ -45,12 +71,12 @@ async def _resolve_agent_user(session) -> tuple[str, str]:
         role="member",
     )
     saved = await repo.save(user)
-    log.info("wecom: 已创建 Agent 执行用户 %s (%s)", WECOM_BOT_USERNAME, saved.id)
+    log.info("wecom: 已创建兜底执行用户 %s (%s)", WECOM_BOT_USERNAME, saved.id)
     return saved.id, saved.tenant_id
 
 
 def make_wecom_agent_runner():
-    """构造 agent_runner：RawMessage → AgentService.run → 回复文本。"""
+    """构造 agent_runner：RawMessage → 绑定路由 → AgentService.run → 回复文本。"""
 
     async def runner(raw) -> str:
         from harness.platform.api.vo.auth_vo import UserInfo
@@ -59,7 +85,9 @@ def make_wecom_agent_runner():
 
         factory = get_session_factory()
         async with factory() as session:
-            user_id, tenant_id = await _resolve_agent_user(session)
+            user_id, tenant_id = await _resolve_agent_user(
+                session, raw.channel_user_id
+            )
             user = UserInfo(user_id=user_id, tenant_id=tenant_id, role="member")
             result = await AgentService(user, session).run(
                 goal=raw.content or "（空消息）",
@@ -88,7 +116,7 @@ def start_wecom_consumer(app) -> asyncio.Task | None:
         name="wecom-consumer",
     )
     app.state.wecom_consumer_task = task
-    log.info("wecom: 消费循环已启动（收→Agent→发）")
+    log.info("wecom: 消费循环已启动（收→绑定路由→Agent→发）")
     return task
 
 
@@ -100,4 +128,8 @@ def stop_wecom_consumer(app) -> None:
         app.state.wecom_consumer_task = None
 
 
-__all__ = ["make_wecom_agent_runner", "start_wecom_consumer", "stop_wecom_consumer"]
+__all__ = [
+    "make_wecom_agent_runner",
+    "start_wecom_consumer",
+    "stop_wecom_consumer",
+]

@@ -43,7 +43,12 @@
         </button>
 
         <div class="login-sep">或</div>
-        <button class="btn ghost full" type="button" @click="tip('飞书登录待接入')">使用飞书账号登录</button>
+        <button class="btn ghost full" type="button" @click="loginWithWecom">
+          使用企业微信登录
+        </button>
+        <button class="btn ghost full" type="button" @click="tip('飞书登录待接入')">
+          使用飞书账号登录
+        </button>
       </form>
     </div>
   </div>
@@ -79,6 +84,12 @@ async function submit(): Promise<void> {
 
 function tip(text: string): void {
   pushToast(text);
+}
+
+/** 企微 OAuth：整页跳到后端 /auth/wecom/login，由它 302 到企微扫码页。 */
+function loginWithWecom(): void {
+  const redirect = typeof route.query.redirect === "string" ? route.query.redirect : "/";
+  window.location.href = `/api/v1/auth/wecom/login?redirect=${encodeURIComponent(redirect)}`;
 }
 </script>
 

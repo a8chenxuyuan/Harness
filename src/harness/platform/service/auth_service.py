@@ -136,6 +136,10 @@ class AuthService:
             expires_in=ACCESS_TOKEN_EXPIRE,
         )
 
+    async def issue_tokens_for(self, user: User) -> LoginResponse:
+        """为已存在用户签发双 token（OAuth 等免密登录入口用）。"""
+        return await self._issue_tokens(user)
+
     async def revoke_refresh_token(self, refresh_token: str | None) -> bool:
         """登出：吊销指定 refresh token（非法/空 token 静默忽略）。"""
         if not refresh_token:

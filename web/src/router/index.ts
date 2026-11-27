@@ -14,6 +14,12 @@ const router = createRouter({
       meta: { public: true, title: "登录" },
     },
     {
+      path: "/oauth/callback",
+      name: "oauth-callback",
+      component: () => import("@/views/OAuthCallbackView.vue"),
+      meta: { public: true, title: "OAuth 登录" },
+    },
+    {
       path: "/",
       component: AppShell,
       children: [
