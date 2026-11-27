@@ -25,22 +25,34 @@
     </section>
 
     <div class="cols">
-      <!-- 今日摘要（数据接入后由 CHAN-06 提供真实数据） -->
+      <!-- 今日摘要（真实数据：企微资料/审批待办等归户数据） -->
       <section class="section">
         <h2 class="section-title">今日摘要</h2>
         <div class="card summary">
-          <div class="summary-row">
-            <span>企业微信未读消息</span>
-            <b class="muted">待接入</b>
+          <template v-if="summary">
+            <div class="summary-row" v-for="(count, source) in summary.counts" :key="source">
+              <span>{{ sourceLabel(source) }}</span>
+              <b>{{ count }}</b>
+            </div>
+            <div v-if="!Object.keys(summary.counts).length" class="summary-row">
+              <span>暂无今日数据</span>
+              <b class="muted">0</b>
+            </div>
+            <ul v-if="summary.items.length" class="items">
+              <li v-for="(item, idx) in summary.items" :key="idx">
+                <span class="plat-tag">{{ platformLabel(item.platform) }}</span>
+                <b>{{ item.title }}</b>
+                <small>{{ item.summary }}</small>
+              </li>
+            </ul>
+            <p v-else class="summary-note">
+              连接企业微信后，这里会自动汇总你各平台的消息与待办。
+              <RouterLink to="/connections">去连接 →</RouterLink>
+            </p>
+          </template>
+          <div v-else class="summary-row">
+            <span>摘要加载中…</span>
           </div>
-          <div class="summary-row">
-            <span>跨平台待办</span>
-            <b class="muted">待接入</b>
-          </div>
-          <p class="summary-note">
-            连接企业微信后，这里会自动汇总你各平台的消息与待办。
-            <RouterLink to="/connections">去连接 →</RouterLink>
-          </p>
         </div>
       </section>
 
@@ -68,9 +80,31 @@ import { onMounted, ref } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 
 import { listRuns } from "@/api/runs";
+import { fetchTodaySummary, type TodaySummary } from "@/api/summary";
 import type { RunItem } from "@/api/types";
 
 const router = useRouter();
+
+const summary = ref<TodaySummary | null>(null);
+
+const SOURCE_LABELS: Record<string, string> = {
+  profile: "企微资料",
+  approval: "审批待办",
+  message: "消息",
+};
+const PLATFORM_LABELS: Record<string, string> = {
+  wecom: "企微",
+  feishu: "飞书",
+  dingtalk: "钉钉",
+};
+
+function sourceLabel(source: string): string {
+  return SOURCE_LABELS[source] ?? source;
+}
+
+function platformLabel(platform: string): string {
+  return PLATFORM_LABELS[platform] ?? platform;
+}
 
 const commands = [
   { icon: "✉", label: "汇总未读消息", desc: "把各平台未读聚合成一份简报" },
@@ -119,8 +153,12 @@ function goTasks(): void {
 
 onMounted(async () => {
   try {
-    const resp = await listRuns(1, 5);
+    const [resp, sum] = await Promise.all([
+      listRuns(1, 5),
+      fetchTodaySummary().catch(() => null),
+    ]);
     recentTasks.value = resp.items;
+    summary.value = sum;
   } catch {
     /* 摘要失败不打扰首页 */
   }
@@ -223,6 +261,36 @@ onMounted(async () => {
   padding: 8px 0;
   font-size: 13px;
   border-bottom: 1px dashed var(--border, #262c3a);
+}
+.items {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+.items li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 13px;
+  border-bottom: 1px dashed var(--border, #262c3a);
+}
+.items li b {
+  flex-shrink: 0;
+}
+.items li small {
+  color: var(--text-muted, #8b93a7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plat-tag {
+  flex-shrink: 0;
+  background: var(--surface-muted, #1d2230);
+  border-radius: 6px;
+  padding: 1px 7px;
+  font-size: 11px;
+  color: var(--text-muted, #8b93a7);
 }
 .muted {
   color: var(--text-muted, #8b93a7);

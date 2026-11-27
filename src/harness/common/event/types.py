@@ -43,6 +43,9 @@ class EventType(str, Enum):
     # 压缩
     COMPACTION_TRIGGERED = "compaction_triggered"
 
+    # 平台数据拉取（W4.1-CHAN-06）：一条外部平台数据入库
+    PLATFORM_ITEM = "platform_item"
+
 
 @dataclass(frozen=True)
 class Event:

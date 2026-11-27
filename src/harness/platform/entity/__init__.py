@@ -18,6 +18,7 @@ from harness.platform.entity.idempotency_key import IdempotencyRecord
 from harness.platform.entity.memory import MemoryEntry
 from harness.platform.entity.permission import RolePagePermission, UserRole
 from harness.platform.entity.plan import PlanRecord
+from harness.platform.entity.platform_item import ChannelFetchState, PlatformItem
 from harness.platform.entity.refresh_token import RefreshToken
 from harness.platform.entity.session import SessionRecord
 from harness.platform.entity.session_message import SessionMessage
@@ -45,5 +46,7 @@ __all__ = [
     "TenantUsageDaily",
     "UserRole",
     "RolePagePermission",
+    "PlatformItem",
+    "ChannelFetchState",
     "RefreshToken",
 ]
