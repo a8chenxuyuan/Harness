@@ -38,9 +38,12 @@ def create_app() -> FastAPI:
         _start_webhook_dispatcher(app)
         # W4-CHAN-02A：注册企微自建应用回调 adapter（无配置则跳过）
         _register_wecom_adapter(app)
+        # W4-CHAN-02A：启动企微消费循环（收→Agent→发，失败不阻断启动）
+        _start_wecom_consumer(app)
         log.info("Harness API server startup complete")
         yield
         # ===== shutdown =====
+        _stop_wecom_consumer(app)
         _stop_webhook_dispatcher(app)
         await _close_db()
         log.info("Harness API server shutdown complete")
@@ -192,3 +195,23 @@ def _register_wecom_adapter(app: FastAPI) -> None:
         )
     except Exception as exc:  # noqa: BLE001 — 不阻断启动
         log.warning("wecom adapter 注册失败（可忽略）: %s", exc)
+
+
+def _start_wecom_consumer(app: FastAPI) -> None:
+    """启动企微消费循环（收→Agent→发；失败不阻断启动）。"""
+    try:
+        from harness.integrations.gateway.wecom_consumer import start_wecom_consumer
+
+        start_wecom_consumer(app)
+    except Exception as exc:  # noqa: BLE001 — 不阻断启动
+        log.warning("wecom 消费循环启动失败（可忽略）: %s", exc)
+
+
+def _stop_wecom_consumer(app: FastAPI) -> None:
+    """停掉企微消费循环任务。"""
+    try:
+        from harness.integrations.gateway.wecom_consumer import stop_wecom_consumer
+
+        stop_wecom_consumer(app)
+    except Exception:  # noqa: BLE001
+        pass
