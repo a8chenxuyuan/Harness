@@ -16,6 +16,7 @@ from .agents import router as agents_router
 from .apikeys import router as api_keys_router
 from .auth import router as auth_router
 from .channels import router as channels_router
+from .channels_wecom import router as channels_wecom_router
 from .health import router as health_router
 from .hitl import router as hitl_router
 from .memories import router as memories_router
@@ -49,6 +50,7 @@ api_router.include_router(tools_router)
 api_router.include_router(mcp_router)
 api_router.include_router(observability_router)
 api_router.include_router(channels_router)
+api_router.include_router(channels_wecom_router)
 api_router.include_router(tenant_router)
 api_router.include_router(webhooks_router)
 

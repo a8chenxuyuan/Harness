@@ -28,6 +28,8 @@ dependencies = [
     "PyJWT>=2.8",
     "passlib[bcrypt]>=1.7",
     "aiosqlite>=0.20",
+    # --- W4-CHAN-02A ---
+    "pycryptodome>=3.20",
 ]
 
 [project.scripts]

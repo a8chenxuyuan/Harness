@@ -36,6 +36,8 @@ def create_app() -> FastAPI:
         await _recover_interrupted()
         # W4-CHAN-03：启动 Webhook 事件推送调度器（订阅 EventBus，失败不阻断启动）
         _start_webhook_dispatcher(app)
+        # W4-CHAN-02A：注册企微自建应用回调 adapter（无配置则跳过）
+        _register_wecom_adapter(app)
         log.info("Harness API server startup complete")
         yield
         # ===== shutdown =====
@@ -168,3 +170,25 @@ def _stop_webhook_dispatcher(app: FastAPI) -> None:
             dispatcher.stop()
         except Exception:  # noqa: BLE001
             pass
+
+
+def _register_wecom_adapter(app: FastAPI) -> None:
+    """读取企微配置并挂到 app.state.wecom_adapter（W4-CHAN-02A）。"""
+    try:
+        from harness.integrations.gateway.adapters.wecom import WeComAdapter
+        from harness.integrations.gateway.wecom_config import load_wecom_config
+
+        cfg = load_wecom_config()
+        if not cfg:
+            log.info("wecom: 未配置，跳过注册")
+            return
+        adapter = WeComAdapter(cfg)
+        app.state.wecom_adapter = adapter
+        log.info(
+            "wecom: 已注册（corp_id=%s, receive=%s, send=%s）",
+            cfg.get("corp_id", "?"),
+            adapter.ready_for_receive,
+            adapter.ready_for_send,
+        )
+    except Exception as exc:  # noqa: BLE001 — 不阻断启动
+        log.warning("wecom adapter 注册失败（可忽略）: %s", exc)
