@@ -1,4 +1,4 @@
-"""API Key 管理接口（W4-API-01）。
+﻿"""API Key 管理接口（W4-API-01）。
 
 对外暴露机器调用凭据的签发、查询与吊销。签发走 JWT 用户身份；
 机器调用侧的鉴权分流在 deps.get_current_user（hk_ 前缀）。
@@ -14,7 +14,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from harness.platform.api.deps import get_current_user, get_db
+from harness.platform.api.deps import get_db, require_role
 from harness.platform.api.dto.api_key_dto import ApiKeyCreateRequest
 from harness.platform.api.exceptions import BizError
 from harness.platform.api.vo.api_key_vo import (
@@ -33,7 +33,7 @@ router = APIRouter(prefix="/api-keys", tags=["api-keys"])
 @router.post("", response_model=ApiResponse[ApiKeyCreateResponse])
 async def create_api_key(
     body: ApiKeyCreateRequest,
-    user: UserInfo = Depends(get_current_user),
+    user: UserInfo = Depends(require_role("owner", "admin", "machine")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """签发一个新 API Key。
@@ -59,7 +59,7 @@ async def create_api_key(
 
 @router.get("", response_model=ApiResponse[ApiKeyListResponse])
 async def list_api_keys(
-    user: UserInfo = Depends(get_current_user),
+    user: UserInfo = Depends(require_role("owner", "admin", "machine")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """列出租户下全部 API Key（脱敏，不含哈希与明文）。"""
@@ -77,7 +77,7 @@ async def list_api_keys(
 @router.delete("/{key_id}", response_model=ApiResponse[ApiKeyRevokeResponse])
 async def revoke_api_key(
     key_id: str,
-    user: UserInfo = Depends(get_current_user),
+    user: UserInfo = Depends(require_role("owner", "admin", "machine")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """吊销一个 API Key（同租户校验）。

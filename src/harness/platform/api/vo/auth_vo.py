@@ -25,4 +25,10 @@ class UserInfo(BaseModel):
     role: str = Field(..., description="owner | admin | member")
 
 
-__all__ = ["LoginResponse", "UserInfo"]
+class MeInfo(UserInfo):
+    """/auth/me 出参：用户信息 + 可见页面清单（多角色并集）。"""
+
+    allowed_pages: list[str] = Field(default_factory=list, description="可见页面 key 列表")
+
+
+__all__ = ["LoginResponse", "MeInfo", "UserInfo"]

@@ -1,4 +1,4 @@
-/** 路由表：登录独立，其余页面共用 AppShell 布局。 */
+/** 路由表：登录独立，其余页面共用 AppShell 布局；meta.pageKey 用于页面权限（W4.1-WEB-01）。 */
 import { createRouter, createWebHistory } from "vue-router";
 
 import AppShell from "@/layout/AppShell.vue";
@@ -27,67 +27,73 @@ const router = createRouter({
           path: "",
           name: "overview",
           component: () => import("@/views/OverviewView.vue"),
-          meta: { title: "概览" },
+          meta: { title: "概览", pageKey: "overview" },
         },
         {
           path: "sessions",
           name: "sessions",
           component: () => import("@/views/SessionListView.vue"),
-          meta: { title: "会话" },
+          meta: { title: "会话", pageKey: "sessions" },
         },
         {
           path: "sessions/:id",
           name: "session-detail",
           component: () => import("@/views/SessionDetailView.vue"),
-          meta: { title: "会话详情" },
+          meta: { title: "会话详情", pageKey: "sessions" },
         },
         {
           path: "agent",
           name: "agent",
           component: () => import("@/views/AgentRunView.vue"),
-          meta: { title: "Agent 运行" },
+          meta: { title: "Agent 运行", pageKey: "agent" },
         },
         {
           path: "audit",
           name: "audit",
           component: () => import("@/views/AuditLogView.vue"),
-          meta: { title: "审计日志" },
+          meta: { title: "审计日志", pageKey: "audit" },
         },
         {
           path: "observability",
           name: "observability",
           component: () => import("@/views/ObservabilityView.vue"),
-          meta: { title: "可观测" },
+          meta: { title: "可观测", pageKey: "observability" },
         },
         {
           path: "skills",
           name: "skills",
           component: () => import("@/views/SkillListView.vue"),
-          meta: { title: "Skill 管理" },
+          meta: { title: "Skill 管理", pageKey: "skills" },
         },
         {
           path: "memories",
           name: "memories",
           component: () => import("@/views/MemoryListView.vue"),
-          meta: { title: "长期记忆" },
+          meta: { title: "长期记忆", pageKey: "memories" },
         },
         {
           path: "tools",
           name: "tools",
           component: () => import("@/views/ToolMarketView.vue"),
-          meta: { title: "工具市场" },
+          meta: { title: "工具市场", pageKey: "tools" },
         },
         {
           path: "api-keys",
           name: "api-keys",
           component: () => import("@/views/ApiKeysView.vue"),
-          meta: { title: "API Key" },
+          meta: { title: "API Key", pageKey: "api-keys" },
         },
         {
           path: "webhooks",
           name: "webhooks",
           component: () => import("@/views/WebhooksView.vue"),
-          meta: { title: "Webhooks" },
+          meta: { title: "Webhooks", pageKey: "webhooks" },
+        },
+        {
+          path: "permissions",
+          name: "permissions",
+          component: () => import("@/views/PermissionsView.vue"),
+          meta: { title: "权限管理", pageKey: "permissions" },
         },
       ],
     },
@@ -95,12 +101,18 @@ const router = createRouter({
   ],
 });
 
-/** 未登录一律回登录页，并带上回跳地址。 */
-router.beforeEach((to) => {
+/** 未登录回登录页；已登录但无该页权限回概览（W4.1-WEB-01 页面权限守卫）。 */
+router.beforeEach(async (to) => {
   const auth = useAuthStore();
   if (to.meta.public) return true;
   if (!auth.loggedIn) {
     return { name: "login", query: { redirect: to.fullPath } };
+  }
+  // 刷新后首次导航先 hydrate（拉 /auth/me 拿 allowed_pages）
+  if (!auth.user) await auth.hydrate();
+  const pageKey = to.meta.pageKey as string | undefined;
+  if (pageKey && auth.allowedPages.length > 0 && !auth.allowedPages.includes(pageKey)) {
+    return { name: "overview" };
   }
   return true;
 });

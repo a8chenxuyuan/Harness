@@ -17,38 +17,38 @@
       </div>
 
       <div class="nav-label">工作台</div>
-      <RouterLink class="nav-item" :class="{ active: isActive('overview') }" to="/">
+      <RouterLink v-if="can('overview')" class="nav-item" :class="{ active: isActive('overview') }" to="/">
         <span class="ico">◫</span>概览
       </RouterLink>
-      <RouterLink class="nav-item" :class="{ active: isActive('sessions') }" to="/sessions">
+      <RouterLink v-if="can('sessions')" class="nav-item" :class="{ active: isActive('sessions') }" to="/sessions">
         <span class="ico">☰</span>会话
       </RouterLink>
-      <RouterLink class="nav-item" :class="{ active: isActive('agent') }" to="/agent">
+      <RouterLink v-if="can('agent')" class="nav-item" :class="{ active: isActive('agent') }" to="/agent">
         <span class="ico">▶</span>Agent 运行
       </RouterLink>
-      <RouterLink class="nav-item" :class="{ active: isActive('skills') }" to="/skills">
+
+      <div v-if="hasAny(['skills', 'memories', 'tools'])" class="nav-label">能力</div>
+      <RouterLink v-if="can('skills')" class="nav-item" :class="{ active: isActive('skills') }" to="/skills">
         <span class="ico">✦</span>Skill 管理
       </RouterLink>
-      <RouterLink class="nav-item" :class="{ active: isActive('memories') }" to="/memories">
+      <RouterLink v-if="can('memories')" class="nav-item" :class="{ active: isActive('memories') }" to="/memories">
         <span class="ico">◇</span>长期记忆
       </RouterLink>
-      <RouterLink class="nav-item" :class="{ active: isActive('tools') }" to="/tools">
+      <RouterLink v-if="can('tools')" class="nav-item" :class="{ active: isActive('tools') }" to="/tools">
         <span class="ico">◫</span>工具市场
       </RouterLink>
-      <RouterLink class="nav-item" :class="{ active: isActive('api-keys') }" to="/api-keys">
+
+      <div v-if="hasAny(['api-keys', 'webhooks'])" class="nav-label">集成</div>
+      <RouterLink v-if="can('api-keys')" class="nav-item" :class="{ active: isActive('api-keys') }" to="/api-keys">
         <span class="ico">⌗</span>API Key
       </RouterLink>
-      <RouterLink class="nav-item" :class="{ active: isActive('webhooks') }" to="/webhooks">
+      <RouterLink v-if="can('webhooks')" class="nav-item" :class="{ active: isActive('webhooks') }" to="/webhooks">
         <span class="ico">⇅</span>Webhooks
       </RouterLink>
 
-      <div class="nav-label">编排</div>
-      <div class="nav-item" @click="notReady('计划')"><span class="ico">◇</span>计划</div>
-      <div class="nav-item" @click="notReady('Worker')"><span class="ico">⇄</span>Worker</div>
-
-      <div class="nav-label">系统</div>
+      <div v-if="hasAny(['audit', 'observability', 'permissions'])" class="nav-label">管理端</div>
       <RouterLink
-        v-if="canAudit"
+        v-if="can('audit')"
         class="nav-item"
         :class="{ active: isActive('audit') }"
         to="/audit"
@@ -56,12 +56,20 @@
         <span class="ico">▤</span>审计日志
       </RouterLink>
       <RouterLink
-        v-if="canAudit"
+        v-if="can('observability')"
         class="nav-item"
         :class="{ active: isActive('observability') }"
         to="/observability"
       >
         <span class="ico">◎</span>可观测
+      </RouterLink>
+      <RouterLink
+        v-if="can('permissions')"
+        class="nav-item"
+        :class="{ active: isActive('permissions') }"
+        to="/permissions"
+      >
+        <span class="ico">⛨</span>权限管理
       </RouterLink>
       <div class="nav-item" @click="notReady('设置')"><span class="ico">⚙</span>设置</div>
 
@@ -114,9 +122,16 @@ const theme = ref(localStorage.getItem("harness.theme") ?? "dark");
 const title = computed(() => String(route.meta.title ?? "概览"));
 const tenant = computed(() => auth.user?.tenant_id ?? "dev-tenant");
 const initials = computed(() => (auth.user?.user_id ?? "NA").slice(0, 2).toUpperCase());
-const canAudit = computed(
-  () => auth.user?.role === "owner" || auth.user?.role === "admin",
-);
+/** 页面权限（W4.1-WEB-01）：allowed_pages 未拉取时放行（守卫负责 hydrate）。 */
+function can(pageKey: string): boolean {
+  const pages = auth.allowedPages;
+  return pages.length === 0 || pages.includes(pageKey);
+}
+
+/** 分组下是否有任一可见页（决定分组标题显隐）。 */
+function hasAny(pageKeys: string[]): boolean {
+  return pageKeys.some((key) => can(key));
+}
 
 /** 当前导航项是否命中（详情页高亮"会话"）。 */
 function isActive(name: string): boolean {

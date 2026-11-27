@@ -1,4 +1,4 @@
-"""工具目录 / 市场接口（W4-EXT-02）。
+﻿"""工具目录 / 市场接口（W4-EXT-02）。
 
 接口清单：
     GET  /tools              内置工具目录（顺序稳定，供快照测试）
@@ -12,7 +12,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, status
 
-from harness.platform.api.deps import get_current_user
+from harness.platform.api.deps import require_role
 from harness.platform.api.dto.tool_dto import ToolDebugRequest
 from harness.platform.api.exceptions import BizError
 from harness.platform.api.vo.auth_vo import UserInfo
@@ -50,7 +50,7 @@ def tool_catalog() -> list[dict[str, Any]]:
 
 
 @router.get("", response_model=ApiResponse[dict[str, Any]])
-async def list_tools(user: UserInfo = Depends(get_current_user)) -> dict[str, Any]:
+async def list_tools(user: UserInfo = Depends(require_role("owner", "admin", "machine"))) -> dict[str, Any]:
     """列出当前 runtime 注册的内置工具。"""
     items = tool_catalog()
     return {
@@ -65,7 +65,7 @@ async def list_tools(user: UserInfo = Depends(get_current_user)) -> dict[str, An
 # ---------------------------------------------------------------------------
 
 @router.get("/market", response_model=ApiResponse[ToolMarketResponse])
-async def tool_market(user: UserInfo = Depends(get_current_user)) -> dict:
+async def tool_market(user: UserInfo = Depends(require_role("owner", "admin", "machine"))) -> dict:
     """聚合全部工具（内置 + 已注册 MCP server 的工具）。
 
     每项标注来源 source（builtin / mcp）与来源 server 名，
@@ -90,7 +90,7 @@ async def tool_market(user: UserInfo = Depends(get_current_user)) -> dict:
 async def debug_tool(
     name: str,
     body: ToolDebugRequest,
-    user: UserInfo = Depends(get_current_user),
+    user: UserInfo = Depends(require_role("owner", "admin", "machine")),
 ) -> dict:
     """调试执行一个工具（安全护栏见 service 层）。
 

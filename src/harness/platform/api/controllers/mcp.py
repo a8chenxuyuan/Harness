@@ -1,4 +1,4 @@
-"""MCP server 注册管理接口（W4-EXT-02）。
+﻿"""MCP server 注册管理接口（W4-EXT-02）。
 
 对外暴露外部 MCP server 的注册、查询与注销。注册时立即对目标
 server 做 stdio 握手验证，可用性有问题直接报错，不注册半可用实例。
@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, status
 
-from harness.platform.api.deps import get_current_user
+from harness.platform.api.deps import require_role
 from harness.platform.api.dto.tool_dto import McpServerRegisterRequest
 from harness.platform.api.exceptions import BizError
 from harness.platform.api.vo.auth_vo import UserInfo
@@ -32,7 +32,7 @@ router = APIRouter(prefix="/mcp", tags=["mcp"])
 @router.post("/servers", response_model=ApiResponse[McpServerRegisterResponse])
 async def register_server(
     body: McpServerRegisterRequest,
-    user: UserInfo = Depends(get_current_user),
+    user: UserInfo = Depends(require_role("owner", "admin", "machine")),
 ) -> dict:
     """注册一个外部 MCP server（stdio）。
 
@@ -54,7 +54,7 @@ async def register_server(
 
 
 @router.get("/servers", response_model=ApiResponse[McpServerListResponse])
-async def list_servers(user: UserInfo = Depends(get_current_user)) -> dict:
+async def list_servers(user: UserInfo = Depends(require_role("owner", "admin", "machine"))) -> dict:
     """列出已注册的 MCP server（按名称排序）。"""
     items = await market.list_mcp_servers()
     return {
@@ -68,7 +68,7 @@ async def list_servers(user: UserInfo = Depends(get_current_user)) -> dict:
 
 
 @router.delete("/servers/{name}", response_model=ApiResponse[McpServerDeleteResponse])
-async def delete_server(name: str, user: UserInfo = Depends(get_current_user)) -> dict:
+async def delete_server(name: str, user: UserInfo = Depends(require_role("owner", "admin", "machine"))) -> dict:
     """注销一个 MCP server，并从工具市场回收它接入的工具。
 
     - 找不到 → BizError(404)

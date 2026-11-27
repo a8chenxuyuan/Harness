@@ -19,6 +19,7 @@ from .channels import router as channels_router
 from .channels_wecom import router as channels_wecom_router
 from .channel_bindings import router as channel_bindings_router
 from .oauth_wecom import router as oauth_wecom_router
+from .permissions import router as permissions_router
 from .health import router as health_router
 from .hitl import router as hitl_router
 from .memories import router as memories_router
@@ -55,6 +56,7 @@ api_router.include_router(channels_router)
 api_router.include_router(channels_wecom_router)
 api_router.include_router(channel_bindings_router)
 api_router.include_router(oauth_wecom_router)
+api_router.include_router(permissions_router)
 api_router.include_router(tenant_router)
 api_router.include_router(webhooks_router)
 

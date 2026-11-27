@@ -1,4 +1,4 @@
-"""Webhook 管理接口（W4-CHAN-03）。
+﻿"""Webhook 管理接口（W4-CHAN-03）。
 
 对外暴露 Webhook 订阅的登记、查询、删除、投递记录查询与测试投递。
 事件推送侧由 webhook_dispatcher 订阅 EventBus 自动完成，无需手动触发。
@@ -16,7 +16,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from harness.platform.api.deps import get_current_user, get_db
+from harness.platform.api.deps import get_db, require_role
 from harness.platform.api.dto.webhook_dto import WebhookCreateRequest
 from harness.platform.api.exceptions import BizError
 from harness.platform.api.vo.auth_vo import UserInfo
@@ -38,7 +38,7 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 @router.post("", response_model=ApiResponse[WebhookCreateResponse])
 async def create_webhook(
     body: WebhookCreateRequest,
-    user: UserInfo = Depends(get_current_user),
+    user: UserInfo = Depends(require_role("owner", "admin", "machine")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """登记一个新 Webhook 订阅。
@@ -65,7 +65,7 @@ async def create_webhook(
 
 @router.get("", response_model=ApiResponse[WebhookListResponse])
 async def list_webhooks(
-    user: UserInfo = Depends(get_current_user),
+    user: UserInfo = Depends(require_role("owner", "admin", "machine")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """列出租户下全部 Webhook 订阅（secret 只露前缀）。"""
@@ -83,7 +83,7 @@ async def list_webhooks(
 @router.delete("/{webhook_id}", response_model=ApiResponse[WebhookDeleteResponse])
 async def delete_webhook(
     webhook_id: str,
-    user: UserInfo = Depends(get_current_user),
+    user: UserInfo = Depends(require_role("owner", "admin", "machine")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """删除一个订阅（同租户校验，连同其投递记录）。
@@ -105,7 +105,7 @@ async def delete_webhook(
 async def list_deliveries(
     webhook_id: str,
     limit: int = 50,
-    user: UserInfo = Depends(get_current_user),
+    user: UserInfo = Depends(require_role("owner", "admin", "machine")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """查一个订阅的投递记录（最新在前，默认最多 50 条）。"""
@@ -123,7 +123,7 @@ async def list_deliveries(
 @router.post("/{webhook_id}/test", response_model=ApiResponse[WebhookTestResponse])
 async def test_webhook(
     webhook_id: str,
-    user: UserInfo = Depends(get_current_user),
+    user: UserInfo = Depends(require_role("owner", "admin", "machine")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """向订阅 URL 发一条测试事件，返回投递结果。

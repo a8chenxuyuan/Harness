@@ -1,4 +1,4 @@
-"""计划查询接口（GET /plans、GET /plans/{id}）。"""
+﻿"""计划查询接口（GET /plans、GET /plans/{id}）。"""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from harness.platform.api.deps import get_current_user, get_db
+from harness.platform.api.deps import get_db, require_role
 from harness.platform.api.vo.auth_vo import UserInfo
 from harness.platform.api.vo.envelope_vo import ApiResponse
 from harness.platform.api.vo.plan_vo import PlanListResponse, PlanSummary
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/plans", tags=["plans"])
 async def list_plans(
     page: int = Query(default=1, ge=1),
     size: int = Query(default=20, ge=1, le=100),
-    user: UserInfo = Depends(get_current_user),
+    user: UserInfo = Depends(require_role("owner", "admin", "machine")),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """分页列出当前租户的计划（创建时间倒序）。"""
@@ -37,7 +37,7 @@ async def list_plans(
 @router.get("/{plan_id}", response_model=ApiResponse[PlanSummary])
 async def get_plan(
     plan_id: str,
-    user: UserInfo = Depends(get_current_user),
+    user: UserInfo = Depends(require_role("owner", "admin", "machine")),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """查询单个计划（租户隔离，跨租户 404）。"""

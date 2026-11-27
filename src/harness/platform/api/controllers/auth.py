@@ -17,7 +17,7 @@ from harness.platform.api.dto.auth_dto import (
     RefreshRequest,
     RegisterRequest,
 )
-from harness.platform.api.vo.auth_vo import LoginResponse, UserInfo
+from harness.platform.api.vo.auth_vo import LoginResponse, MeInfo, UserInfo
 from harness.platform.api.vo.envelope_vo import ApiResponse
 from harness.platform.service.rate_limit import login_rate_limit
 
@@ -119,7 +119,19 @@ async def logout(
     }
 
 
-@router.get("/me", response_model=ApiResponse[UserInfo])
-async def me(user: UserInfo = Depends(get_current_user)) -> dict:
-    """返回当前登录用户的信息（从 JWT 解析）。"""
-    return {"code": 0, "message": "ok", "data": user}
+@router.get("/me", response_model=ApiResponse[MeInfo])
+async def me(
+    user: UserInfo = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """返回当前登录用户信息 + 可见页面清单（多角色并集，W4.1-WEB-01）。"""
+    from harness.platform.service.permission_service import allowed_pages
+
+    pages = await allowed_pages(db, user.tenant_id, user.user_id, user.role)
+    data = MeInfo(
+        user_id=user.user_id,
+        tenant_id=user.tenant_id,
+        role=user.role,
+        allowed_pages=pages,
+    )
+    return {"code": 0, "message": "ok", "data": data}

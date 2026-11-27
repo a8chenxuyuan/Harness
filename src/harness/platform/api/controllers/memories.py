@@ -1,4 +1,4 @@
-"""Memory 管理接口（W4-02）。
+﻿"""Memory 管理接口（W4-02）。
 
 对外暴露长期记忆的查询、手动保存、删除能力。
 长期记忆是 Agent 的"外部大脑"——跨会话持久化存储，
@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from harness.platform.api.deps import get_current_user
+from harness.platform.api.deps import require_role
 from harness.platform.api.dto.memory_dto import MemorySaveRequest
 from harness.platform.api.exceptions import BizError
 from harness.platform.api.vo.auth_vo import UserInfo
@@ -43,7 +43,7 @@ async def list_memories(
     limit: int = Query(default=50, ge=1, le=500, description="每页条数，默认 50"),
     offset: int = Query(default=0, ge=0, description="分页偏移，默认 0"),
     session_id: str | None = Query(default=None, max_length=64, description="限定来源会话；空表示不筛选"),
-    user: UserInfo = Depends(get_current_user),
+    user: UserInfo = Depends(require_role("owner", "admin", "machine")),
 ) -> dict:
     """分页查询长期记忆。
 
@@ -80,7 +80,7 @@ async def list_memories(
 @router.post("", response_model=ApiResponse[MemorySaveResponse])
 async def save_memory(
     body: MemorySaveRequest,
-    user: UserInfo = Depends(get_current_user),
+    user: UserInfo = Depends(require_role("owner", "admin", "machine")),
 ) -> dict:
     """手动保存一条长期记忆。
 
@@ -111,7 +111,7 @@ async def save_memory(
 @router.delete("/{item_id}", response_model=ApiResponse[MemoryDeleteResponse])
 async def delete_memory(
     item_id: str,
-    user: UserInfo = Depends(get_current_user),
+    user: UserInfo = Depends(require_role("owner", "admin", "machine")),
 ) -> dict:
     """按 item_id 删除一条记忆。
 

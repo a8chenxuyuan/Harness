@@ -15,6 +15,9 @@ export const useAuthStore = defineStore("auth", () => {
 
   const loggedIn = computed(() => Boolean(token.value));
 
+  /** 可见页面（多角色并集）；未拉取前视为空（路由守卫放行到 hydrate）。 */
+  const allowedPages = computed<string[]>(() => user.value?.allowed_pages ?? []);
+
   /** 登录：写入 token 后拉一次 /auth/me。 */
   async function signIn(username: string, password: string): Promise<void> {
     loading.value = true;
@@ -63,6 +66,7 @@ export const useAuthStore = defineStore("auth", () => {
     user,
     loading,
     loggedIn,
+    allowedPages,
     signIn,
     signOut,
     hydrate,

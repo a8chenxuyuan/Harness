@@ -1,4 +1,4 @@
-"""Skill 管理接口（W4-01）。
+﻿"""Skill 管理接口（W4-01）。
 
 对外暴露已加载 Skill 的查询、注册、注销与触发测试。
 Skill 是 Agent 的"人格/专家视角包"——命中触发词时追加 custom_message
@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from harness.platform.api.deps import get_current_user
+from harness.platform.api.deps import require_role
 from harness.platform.api.dto.skill_dto import (
     SkillPatchRequest,
     SkillRegisterRequest,
@@ -49,7 +49,7 @@ router = APIRouter(prefix="/skills", tags=["skills"])
 # ---------------------------------------------------------------------------
 
 @router.get("", response_model=ApiResponse[SkillListResponse])
-async def list_skills(user: UserInfo = Depends(get_current_user)) -> dict:
+async def list_skills(user: UserInfo = Depends(require_role("owner", "admin", "machine"))) -> dict:
     """列出当前全部 Skill。
 
     按四层聚合优先级从高到低排序：runtime → user → project → bundled。
@@ -71,7 +71,7 @@ async def list_skills(user: UserInfo = Depends(get_current_user)) -> dict:
 # ---------------------------------------------------------------------------
 
 @router.get("/{name}", response_model=ApiResponse[SkillDetailResponse])
-async def get_skill(name: str, user: UserInfo = Depends(get_current_user)) -> dict:
+async def get_skill(name: str, user: UserInfo = Depends(require_role("owner", "admin", "machine"))) -> dict:
     """按名字查 Skill，不存在返回 data.skill=null（不是 404）。
 
     原因：Skill 是动态加载的，不同环境 bundled/project 目录内容可能不同，
@@ -94,7 +94,7 @@ async def get_skill(name: str, user: UserInfo = Depends(get_current_user)) -> di
 @router.post("", response_model=ApiResponse[SkillRegisterResponse])
 async def register_skill(
     body: SkillRegisterRequest,
-    user: UserInfo = Depends(get_current_user),
+    user: UserInfo = Depends(require_role("owner", "admin", "machine")),
 ) -> dict:
     """注册一个新 Skill（运行时层）。
 
@@ -131,7 +131,7 @@ async def register_skill(
 async def patch_skill(
     name: str,
     body: SkillPatchRequest,
-    user: UserInfo = Depends(get_current_user),
+    user: UserInfo = Depends(require_role("owner", "admin", "machine")),
 ) -> dict:
     """启用/禁用一个 Skill。
 
@@ -156,7 +156,7 @@ async def patch_skill(
 # ---------------------------------------------------------------------------
 
 @router.get("/{name}/versions", response_model=ApiResponse[SkillVersionsResponse])
-async def list_skill_versions(name: str, user: UserInfo = Depends(get_current_user)) -> dict:
+async def list_skill_versions(name: str, user: UserInfo = Depends(require_role("owner", "admin", "machine"))) -> dict:
     """查一个 Skill 的历史版本（内存态）。
 
     只记录 API 覆盖注册时被替换的旧版本，新版本在前；
@@ -179,7 +179,7 @@ async def list_skill_versions(name: str, user: UserInfo = Depends(get_current_us
 # ---------------------------------------------------------------------------
 
 @router.delete("/{name}", response_model=ApiResponse[SkillDeleteResponse])
-async def delete_skill(name: str, user: UserInfo = Depends(get_current_user)) -> dict:
+async def delete_skill(name: str, user: UserInfo = Depends(require_role("owner", "admin", "machine"))) -> dict:
     """注销一个 Skill。
 
     ⚠️ **安全限制**：只允许注销运行时层注册的 Skill。
@@ -215,7 +215,7 @@ async def delete_skill(name: str, user: UserInfo = Depends(get_current_user)) ->
 @router.post("/trigger-test", response_model=ApiResponse[SkillTriggerTestResponse])
 async def trigger_test(
     body: SkillTriggerTestRequest,
-    user: UserInfo = Depends(get_current_user),
+    user: UserInfo = Depends(require_role("owner", "admin", "machine")),
 ) -> dict:
     """测试 Skill 匹配效果：传一段文本，返回命中的 Skill 列表。
 

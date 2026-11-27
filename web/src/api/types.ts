@@ -20,6 +20,18 @@ export interface UserInfo {
   user_id: string;
   tenant_id: string;
   role: string;
+  /** 可见页面 key 列表（多角色并集，/auth/me 返回）。 */
+  allowed_pages?: string[];
+}
+
+/** 权限管理页的用户行（/permissions/users）。 */
+export interface PermissionUser {
+  user_id: string;
+  username: string;
+  email: string;
+  primary_role: string;
+  roles: string[];
+  is_active: boolean;
 }
 
 /** 会话摘要（列表行）。 */

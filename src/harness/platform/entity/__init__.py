@@ -16,6 +16,7 @@ from harness.platform.entity.audit_log import AuditLog
 from harness.platform.entity.channel import ChannelApp, ChannelBinding
 from harness.platform.entity.idempotency_key import IdempotencyRecord
 from harness.platform.entity.memory import MemoryEntry
+from harness.platform.entity.permission import RolePagePermission, UserRole
 from harness.platform.entity.plan import PlanRecord
 from harness.platform.entity.refresh_token import RefreshToken
 from harness.platform.entity.session import SessionRecord
@@ -42,5 +43,7 @@ __all__ = [
     "IdempotencyRecord",
     "TenantQuota",
     "TenantUsageDaily",
+    "UserRole",
+    "RolePagePermission",
     "RefreshToken",
 ]
