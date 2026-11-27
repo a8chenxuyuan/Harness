@@ -22,11 +22,14 @@ from harness.platform.entity.session_message import SessionMessage
 from harness.platform.entity.tenant import Tenant
 from harness.platform.entity.tenant_quota import TenantQuota, TenantUsageDaily
 from harness.platform.entity.user import User
+from harness.platform.entity.webhook import WebhookDelivery, WebhookSubscription
 
 __all__ = [
     "Tenant",
     "User",
     "ApiKey",
+    "WebhookSubscription",
+    "WebhookDelivery",
     "SessionRecord",
     "SessionMessage",
     "AgentRun",

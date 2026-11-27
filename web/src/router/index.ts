@@ -77,6 +77,12 @@ const router = createRouter({
           component: () => import("@/views/ApiKeysView.vue"),
           meta: { title: "API Key" },
         },
+        {
+          path: "webhooks",
+          name: "webhooks",
+          component: () => import("@/views/WebhooksView.vue"),
+          meta: { title: "Webhooks" },
+        },
       ],
     },
     { path: "/:pathMatch(.*)*", redirect: "/" },

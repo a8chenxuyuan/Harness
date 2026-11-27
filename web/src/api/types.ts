@@ -406,3 +406,67 @@ export interface MemorySaveData {
   item_id: string;
   created_at: string;
 }
+
+// ---------------------------------------------------------------------------
+// Webhook 事件推送（W4-CHAN-03）
+// ---------------------------------------------------------------------------
+
+/** 单个 Webhook 订阅的脱敏展示项。 */
+export interface WebhookItem {
+  id: string;
+  name: string;
+  url: string;
+  /** 签名密钥前 8 位（供人工辨认） */
+  secret_prefix: string;
+  /** 关心的事件类型；空数组 = 全部事件 */
+  event_types: string[];
+  is_active: boolean;
+  created_by: string;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+/** GET /api/v1/webhooks 响应。 */
+export interface WebhookListData {
+  items: WebhookItem[];
+  total: number;
+}
+
+/** POST /api/v1/webhooks 请求体。 */
+export interface WebhookCreateBody {
+  name: string;
+  url: string;
+  /** 不传或空 = 订阅全部事件 */
+  event_types?: string[] | null;
+}
+
+/** POST /api/v1/webhooks 响应（密钥明文仅此一次）。 */
+export interface WebhookCreateData {
+  webhook: WebhookItem;
+  secret: string;
+}
+
+/** 单条投递记录。 */
+export interface WebhookDeliveryItem {
+  id: string;
+  subscription_id: string;
+  event_type: string;
+  /** success | failed */
+  status: string;
+  status_code: number | null;
+  attempts: number;
+  duration_ms: number | null;
+  response_body: string;
+  created_at: string | null;
+}
+
+/** GET /api/v1/webhooks/{id}/deliveries 响应。 */
+export interface WebhookDeliveryListData {
+  items: WebhookDeliveryItem[];
+  total: number;
+}
+
+/** POST /api/v1/webhooks/{id}/test 响应。 */
+export interface WebhookTestData {
+  delivery: WebhookDeliveryItem;
+}

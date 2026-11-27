@@ -34,9 +34,12 @@ def create_app() -> FastAPI:
         await _init_db()
         # 依赖 init_db 之后执行：把重启前遗留的 running / streaming 收敛到终态
         await _recover_interrupted()
+        # W4-CHAN-03：启动 Webhook 事件推送调度器（订阅 EventBus，失败不阻断启动）
+        _start_webhook_dispatcher(app)
         log.info("Harness API server startup complete")
         yield
         # ===== shutdown =====
+        _stop_webhook_dispatcher(app)
         await _close_db()
         log.info("Harness API server shutdown complete")
 
@@ -142,3 +145,26 @@ async def _close_db() -> None:
         await close_db()
     except Exception:  # noqa: BLE001
         pass
+
+
+def _start_webhook_dispatcher(app: FastAPI) -> None:
+    """启动 Webhook 调度器并挂到 app.state（W4-CHAN-03）。"""
+    try:
+        from harness.integrations.gateway.webhook_dispatcher import WebhookDispatcher
+
+        dispatcher = WebhookDispatcher()
+        dispatcher.start()
+        app.state.webhook_dispatcher = dispatcher
+        log.info("webhook dispatcher: 已启动并订阅 EventBus")
+    except Exception as exc:  # noqa: BLE001 — 不阻断启动
+        log.warning("webhook dispatcher 启动失败（可忽略）: %s", exc)
+
+
+def _stop_webhook_dispatcher(app: FastAPI) -> None:
+    """停掉 lifespan 里启动的 Webhook 调度器。"""
+    dispatcher = getattr(app.state, "webhook_dispatcher", None)
+    if dispatcher is not None:
+        try:
+            dispatcher.stop()
+        except Exception:  # noqa: BLE001
+            pass

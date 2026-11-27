@@ -38,6 +38,9 @@
       <RouterLink class="nav-item" :class="{ active: isActive('api-keys') }" to="/api-keys">
         <span class="ico">⌗</span>API Key
       </RouterLink>
+      <RouterLink class="nav-item" :class="{ active: isActive('webhooks') }" to="/webhooks">
+        <span class="ico">⇅</span>Webhooks
+      </RouterLink>
 
       <div class="nav-label">编排</div>
       <div class="nav-item" @click="notReady('计划')"><span class="ico">◇</span>计划</div>

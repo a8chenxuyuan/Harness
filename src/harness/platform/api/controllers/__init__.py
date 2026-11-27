@@ -29,6 +29,7 @@ from .skills import router as skills_router
 from .steer import router as steer_router
 from .tenant import router as tenant_router
 from .tools import router as tools_router
+from .webhooks import router as webhooks_router
 
 api_router = APIRouter(prefix="/api/v1", tags=["v1"])
 api_router.include_router(health_router)
@@ -49,5 +50,6 @@ api_router.include_router(mcp_router)
 api_router.include_router(observability_router)
 api_router.include_router(channels_router)
 api_router.include_router(tenant_router)
+api_router.include_router(webhooks_router)
 
 __all__ = ["api_router"]
