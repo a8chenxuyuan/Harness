@@ -1,36 +1,47 @@
 """企微配置 loader（W4-CHAN-02A）。
 
-读取顺序：优先 env 变量（HARNESS_WECOM__xxx），CHAN-05 时改从 channel_apps 表读取。
+读取顺序：os.environ（HARNESS_WECOM__xxx）优先，缺失字段回退
+Settings().channels.wecom（由 pydantic-settings 从 .env 加载）。
+CHAN-05 时再增加 channel_apps 表来源。
 """
 
 from __future__ import annotations
 
 import os
-from typing import Any
+
+_ENV_KEYS = {
+    "corp_id": "HARNESS_WECOM__CORP_ID",
+    "agent_id": "HARNESS_WECOM__AGENT_ID",
+    "secret": "HARNESS_WECOM__SECRET",
+    "token": "HARNESS_WECOM__TOKEN",
+    "encoding_aes_key": "HARNESS_WECOM__ENCODING_AES_KEY",
+}
 
 
 def load_wecom_config() -> dict[str, str]:
-    """从 env 读企微自建应用凭据。
+    """读取企微自建应用凭据（env 优先，.env 回退）。
 
     Returns:
-        dict 可能只含部分字段 —— 至少 corp_id + token + encoding_aes_key 才能 receive，
-        至少 corp_id + secret + agent_id 才能 send。调用方按 ``ready_for_send`` /
-        ``ready_for_receive`` 自行判断。
+        dict 可能只含部分字段 —— receive 需要 corp_id + token +
+        encoding_aes_key；send 需要 corp_id + secret + agent_id。
+        调用方按 ``ready_for_send`` / ``ready_for_receive`` 判断。
     """
-    prefix = "HARNESS_WECOM__"
-    mapping = {
-        "corp_id": "CORP_ID",
-        "agent_id": "AGENT_ID",
-        "secret": "SECRET",
-        "token": "TOKEN",
-        "encoding_aes_key": "ENCODING_AES_KEY",
-    }
-    cfg: dict[str, str] = {}
-    for key, env_suffix in mapping.items():
-        val = os.environ.get(prefix + env_suffix)
-        if val:
-            cfg[key] = val
-    # agent_id 可能是纯数字字符串，adapter 里 int() 转换会处理
+    cfg = {k: v for k, env in _ENV_KEYS.items() if (v := os.environ.get(env))}
+    if len(cfg) == len(_ENV_KEYS):
+        return cfg  # env 已齐全，无需回退
+
+    try:
+        from harness.common.config.settings import Settings
+
+        wecom = Settings().wecom
+    except Exception:  # noqa: BLE001 — Settings 构造失败时只走 env
+        return cfg
+
+    for key in _ENV_KEYS:
+        if not cfg.get(key):
+            value = getattr(wecom, key, "")
+            if value:
+                cfg[key] = value
     return cfg
 
 

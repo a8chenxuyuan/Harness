@@ -86,6 +86,22 @@ class GatewaySettings(BaseModel):
         return bool(self.mcp.get("command"))
 
 
+class WecomSettings(BaseModel):
+    """企业微信自建应用凭据（HARNESS_WECOM__xxx）。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    corp_id: str = ""
+    agent_id: str = ""
+    secret: str = ""
+    token: str = ""
+    encoding_aes_key: str = ""
+
+    def has_credentials(self) -> bool:
+        """是否至少配置了一项（用于判断是否注册 adapter）。"""
+        return bool(self.corp_id or self.secret or self.token)
+
+
 class Settings(BaseModel):
     """Harness 全局配置入口。
 
@@ -112,6 +128,10 @@ class Settings(BaseModel):
     # --- 已有 ---
     model: ModelSettings = Field(default_factory=ModelSettings)
     gateway: GatewaySettings = Field(default_factory=GatewaySettings)
+    # --- W4-CHAN 渠道凭据（各平台一个顶层字段，对应 HARNESS_<平台>__xxx） ---
+    wecom: WecomSettings = Field(default_factory=WecomSettings)
+    feishu: dict[str, Any] = Field(default_factory=dict)
+    dingtalk: dict[str, Any] = Field(default_factory=dict)
     otlp_endpoint: str = ""
     prometheus_port: int = 9700
 
